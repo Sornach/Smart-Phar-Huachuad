@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ระบบบริหารคลังยาอัจฉริยะ V3.1 (Mobile Camera Fix) | รพ.สต.บ้านหัวชวด (01987)</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Prompt & Sarabun -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- QR Code Generator Library (qrcodejs) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  
+  <!-- QR Code Scanner Library (html5-qrcode) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  
+  <!-- jsQR Fallback Library สำหรับสแกนจากภาพถ่าย/สตรีมวิดีโอโดยตรง -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- SheetJS (XLSX) สำหรับอ่าน/เขียนไฟล์ Excel และ CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Prompt', 'Sarabun', 'sans-serif'],
+            body: ['Sarabun', 'sans-serif'],
+          },
+          colors: {
+            teal: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              200: '#99f6e4',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              800: '#115e59',
+              900: '#134e4a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; }
+    h1, h2, h3, h4, .font-heading { font-family: 'Prompt', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Print Styles สำหรับพิมพ์ป้ายลาเบล QR Code */
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .no-print { display: none !important; }
+      .qr-label-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        border: 1.5px solid #334155 !important;
+      }
+    }
+
+    .tab-active {
+      border-bottom: 3px solid #0d9488;
+      color: #0f766e;
+      font-weight: 600;
+      background-color: #f0fdfa;
+    }
+
+    /* เส้นสแกนเลเซอร์บนกล้อง */
+    @keyframes scanline {
+      0% { top: 10%; }
+      50% { top: 88%; }
+      100% { top: 10%; }
+    }
+    .scanner-laser {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      height: 2px;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981, 0 0 16px #10b981;
+      animation: scanline 2.2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+  <!-- แถบแจ้งเตือนหากเปิดผ่านแอป Line / Facebook In-App Browser -->
+  <div id="in-app-browser-banner" class="hidden bg-amber-500 text-slate-950 px-4 py-3 text-sm font-heading shadow-md">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <i data-lucide="alert-triangle" class="w-5 h-5 shrink-0 text-slate-900"></i>
+        <span><strong>ตรวจพบการเปิดผ่านแอป Line/โซเชียล:</strong> มือถือจะบล็อกกล้องสแกน QR Code กรุณากดจุด 3 จุดมุมขวาบน แล้วเลือก <strong>"เปิดด้วยเบราว์เซอร์เริ่มต้น (Chrome / Safari)"</strong></span>
+      </div>
+      <button onclick="copyCurrentUrl()" class="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium shrink-0">
+        คัดลอกลิงก์ไปเปิดใน Chrome/Safari
+      </button>
+    </div>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <header class="bg-gradient-to-r from-teal-900 via-teal-800 to-emerald-800 text-white shadow-lg sticky top-0 z-40 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between py-3.5 gap-3">
+        <div class="flex items-center gap-3">
+          <div class="bg-white/15 p-2.5 rounded-xl backdrop-blur-sm border border-white/20">
+            <i data-lucide="warehouse" class="w-7 h-7 text-teal-200"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-lg sm:text-xl font-bold tracking-tight">Smart Pharmacy Inventory V3.1</h1>
+              <span class="text-xs bg-emerald-500/30 border border-emerald-300/40 text-emerald-100 px-2 py-0.5 rounded-full font-medium">Mobile Camera Fix</span>
+            </div>
+            <p class="text-xs text-teal-100/90 mt-0.5">รพ.สต.บ้านหัวชวด (01987) ต.หนองบัว อ.บ้านค่าย จ.ระยอง | ฐานข้อมูลปีงบ 2569 + รบ 301 ต.ค. 2569</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="bg-teal-950/50 border border-teal-600/40 px-3 py-1.5 rounded-lg text-xs flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>สูตรอัตราใช้: <strong id="header-amu-mode" class="text-teal-200">100% ฐานทั้งปีงบ 2569</strong></span>
+          </div>
+          <button onclick="saveAllToLocal()" class="bg-teal-600 hover:bg-teal-500 text-white text-xs font-heading font-medium px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm border border-teal-400/30">
+            <i data-lucide="save" class="w-4 h-4"></i> บันทึกลงเครื่อง
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex overflow-x-auto border-t border-teal-700/60 bg-teal-950/30 -mx-4 px-4 sm:mx-0 sm:px-0 sm:rounded-t-lg">
+        <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="tab-btn tab-active flex items-center gap-2 px-4 py-3 text-sm whitespace-nowrap transition">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i> 1. วิเคราะห์คลัง & คำนวณยอดเบิก
+        </button>
+        <button onclick="switchTab('import')" id="tab-btn-import" class="tab-btn text-teal-100 hover:text-white flex items-center gap-2 px-4 py-3 text-sm whitespace-nowrap transition">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> 2. นำเข้าข้อมูล JHCIS (3 แหล่ง)
+        </button>
+        <button onclick="switchTab('scanner')" id="tab-btn-scanner" class="tab-btn text-teal-100 hover:text-white flex items-center gap-2 px-4 py-3 text-sm whitespace-nowrap transition">
+          <i data-lucide="scan-line" class="w-4 h-4"></i> 3. นับคลัง QR Code (Blind Count)
+        </button>
+        <button onclick="switchTab('labels')" id="tab-btn-labels" class="tab-btn text-teal-100 hover:text-white flex items-center gap-2 px-4 py-3 text-sm whitespace-nowrap transition">
+          <i data-lucide="qr-code" class="w-4 h-4"></i> 4. พิมพ์ป้าย QR หน้าชั้นยา
+        </button>
+        <button onclick="switchTab('master')" id="tab-btn-master" class="tab-btn text-teal-100 hover:text-white flex items-center gap-2 px-4 py-3 text-sm whitespace-nowrap transition">
+          <i data-lucide="database" class="w-4 h-4"></i> 5. ฐานข้อมูล & รหัสซ้ำปี 69
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ===================================================================== -->
+    <!-- TAB 1: DASHBOARD & REQUISITION CALCULATOR -->
+    <!-- ===================================================================== -->
+    <section id="view-dashboard" class="space-y-6">
+      <!-- KPI Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div onclick="filterByStatus('critical')" class="cursor-pointer bg-white rounded-xl p-5 shadow-sm border border-rose-200 hover:shadow-md transition relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-heading font-semibold uppercase tracking-wider text-rose-600">วิกฤตเสี่ยงขาด (&lt; 0.75 ด.)</p>
+              <h3 class="text-3xl font-bold text-slate-900 mt-1" id="kpi-critical">0 รายการ</h3>
+              <p class="text-xs text-slate-500 mt-1">คลิกเพื่อกรองรายการต้องเบิกด่วน &rarr;</p>
+            </div>
+            <div class="bg-rose-50 p-3 rounded-xl text-rose-600">
+              <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+          </div>
+        </div>
+
+        <div onclick="filterByStatus('optimal')" class="cursor-pointer bg-white rounded-xl p-5 shadow-sm border border-emerald-200 hover:shadow-md transition relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-heading font-semibold uppercase tracking-wider text-emerald-600">สำรองเหมาะสม (0.75 - 3.0 ด.)</p>
+              <h3 class="text-3xl font-bold text-slate-900 mt-1" id="kpi-optimal">0 รายการ</h3>
+              <p class="text-xs text-slate-500 mt-1">มูลค่าคงคลังรวม: <span id="kpi-total-value" class="font-semibold text-slate-700">฿0</span></p>
+            </div>
+            <div class="bg-emerald-50 p-3 rounded-xl text-emerald-600">
+              <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+            </div>
+          </div>
+        </div>
+
+        <div onclick="filterByStatus('overstock')" class="cursor-pointer bg-white rounded-xl p-5 shadow-sm border border-amber-200 hover:shadow-md transition relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-heading font-semibold uppercase tracking-wider text-amber-600">ล้นคลัง (&gt; 3.0 เดือน)</p>
+              <h3 class="text-3xl font-bold text-slate-900 mt-1" id="kpi-overstock">0 รายการ</h3>
+              <p class="text-xs text-slate-500 mt-1">คลิกเพื่อดูรายการงดเบิก/กระจายออก &rarr;</p>
+            </div>
+            <div class="bg-amber-50 p-3 rounded-xl text-amber-600">
+              <i data-lucide="package-plus" class="w-6 h-6"></i>
+            </div>
+          </div>
+        </div>
+
+        <div onclick="filterByStatus('deadstock')" class="cursor-pointer bg-white rounded-xl p-5 shadow-sm border border-slate-200 hover:shadow-md transition relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-heading font-semibold uppercase tracking-wider text-slate-500">ไม่เคลื่อนไหว / Clearance</p>
+              <h3 class="text-3xl font-bold text-slate-900 mt-1" id="kpi-deadstock">0 รายการ</h3>
+              <p class="text-xs text-slate-500 mt-1">คลิกเพื่อตรวจสอบวันหมดอายุ &rarr;</p>
+            </div>
+            <div class="bg-slate-100 p-3 rounded-xl text-slate-600">
+              <i data-lucide="archive-x" class="w-6 h-6"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dual Warehouse Value Breakdown & Insights Banner -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 lg:col-span-1">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-slate-800 text-sm">มูลค่าคงคลัง 2 โซน vs มูลค่าจ่ายจริงเฉลี่ย/เดือน</h3>
+            <span class="text-xs text-slate-400">หน่วย: บาท</span>
+          </div>
+          <div class="h-44">
+            <canvas id="inventoryChart"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 lg:col-span-2 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <i data-lucide="shield-check" class="w-4 h-4 text-teal-600"></i> ผลวิเคราะห์ฐานข้อมูลปีงบ 2569 (รวมรหัสยาซ้ำ & ตัดรายการ Clearance แล้ว)
+              </h3>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div class="bg-rose-50/70 border border-rose-100 rounded-lg p-3">
+                <p class="font-bold text-rose-800 mb-1">🚨 ปรับเพิ่ม Rate เบิกตามฐานทั้งปี 69:</p>
+                <p class="text-slate-700 leading-relaxed">
+                  <strong>Metformin 500 mg</strong> (รวม 2 รหัส = 10,142 เม็ด/ด.), <strong>Amlodipine 5 mg</strong> (10,758 เม็ด/ด.), <strong>Losartan 50 mg</strong> (6,158 เม็ด/ด. เหลือใช้ 16 วัน!)
+                </p>
+              </div>
+              <div class="bg-sky-50/70 border border-sky-100 rounded-lg p-3">
+                <p class="font-bold text-sky-800 mb-1">📊 สรุปมูลค่า 2 คลัง ณ ปัจจุบัน:</p>
+                <p class="text-slate-700 leading-relaxed">
+                  คลังนอก: <strong id="val-out-display">฿31,110</strong> | คลังยาใน: <strong id="val-in-display">฿35,213</strong><br>
+                  อัตราหมุนเวียนรวมเฉลี่ย (MOS): <strong id="mos-avg-display">1.83</strong> เดือน
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+            <span>* รวมรหัสซ้ำแล้ว: Metformin, Simvastatin, Colchicine, Triamcinolone, ขมิ้นชัน, ครีมไพล, ธาตุอบเชย, มะขามป้อม, เพชรสังฆาต</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Requisition Control Panel & Filter Bar -->
+      <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">ตารางวิเคราะห์อัตราใช้จริง (FY69 True AMU) & คำนวณยอดเบิก 2 คลัง</h2>
+            <p class="text-xs text-slate-500 mt-0.5">คำนวณยอดเบิกจาก "สต็อกรวมทั้ง รพ.สต. (คลังนอก + คลังยาใน)" พร้อมปัดเศษขึ้นเป็นจำนวนกล่องตามขนาดบรรจุจริง</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+            <div class="flex items-center gap-1.5">
+              <label class="text-xs font-semibold text-teal-800">สูตร AMU:</label>
+              <select id="param-amu-mode" onchange="recalculateAll()" class="text-xs font-semibold border border-teal-300 rounded-lg px-2 py-1.5 bg-white text-teal-900 focus:ring-2 focus:ring-teal-500 outline-none">
+                <option value="fy69" selected>100% ฐานทั้งปีงบ 2569 (แนะนำช่วงรับงานใหม่)</option>
+                <option value="weighted">ถ่วงน้ำหนัก (70% ปีงบ 69 + 30% เดือนล่าสุด)</option>
+                <option value="oct69">100% ยอดจ่ายเดือนล่าสุด (ต.ค. 69)</option>
+              </select>
+            </div>
+            <div class="h-5 w-px bg-slate-300 hidden sm:block"></div>
+            <div class="flex items-center gap-1.5">
+              <label class="text-xs font-medium text-slate-600">จุดสั่งซื้อ (Min):</label>
+              <input type="number" id="param-min-months" value="1.0" step="0.5" min="0.5" max="6" onchange="recalculateAll()" class="w-14 text-center text-xs font-bold border border-slate-300 rounded-lg py-1 bg-white">
+              <span class="text-xs text-slate-500">ด.</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <label class="text-xs font-medium text-slate-600">สำรองสูงสุด (Max):</label>
+              <input type="number" id="param-max-months" value="2.0" step="0.5" min="1" max="12" onchange="recalculateAll()" class="w-14 text-center text-xs font-bold border border-slate-300 rounded-lg py-1 bg-white">
+              <span class="text-xs text-slate-500">ด.</span>
+            </div>
+            <button onclick="exportRequisitionExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-heading font-medium px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
+              <i data-lucide="download" class="w-4 h-4"></i> ส่งออกใบเบิก (CSV/Excel)
+            </button>
+          </div>
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="relative">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="text" id="filter-search" onkeyup="renderTable()" placeholder="ค้นหาชื่อยา / รหัสยา..." class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
+          </div>
+
+          <select id="filter-category" onchange="renderTable()" class="text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+            <option value="ALL">หมวดหมู่: ทั้งหมด (119 รายการสุทธิ)</option>
+            <option value="ยาแผนปัจจุบัน">ยาแผนปัจจุบัน (95 รายการ)</option>
+            <option value="ยาสมุนไพร">ยาสมุนไพร (22 รายการ)</option>
+            <option value="เวชภัณฑ์คุมกำเนิด">เวชภัณฑ์คุมกำเนิด (2 รายการ)</option>
+          </select>
+
+          <select id="filter-status" onchange="renderTable()" class="text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+            <option value="ALL">สถานะสต็อก: แสดงทั้งหมด</option>
+            <option value="ORDER_NEEDED">เฉพาะรายการที่ "ต้องเบิกเพิ่ม" (Order &gt; 0)</option>
+            <option value="critical">วิกฤตเสี่ยงขาด (&lt; 0.75 เดือน)</option>
+            <option value="optimal">สำรองเหมาะสม (0.75 - 3.0 เดือน)</option>
+            <option value="overstock">ล้นคลัง (&gt; 3.0 เดือน)</option>
+            <option value="deadstock">ไม่เคลื่อนไหว / Clearance</option>
+          </select>
+
+          <button onclick="resetFilters()" class="text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-2 font-medium transition flex items-center justify-center gap-1.5">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> ล้างตัวกรองทั้งหมด
+          </button>
+        </div>
+
+        <!-- Main Inventory Table -->
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="min-w-full divide-y divide-slate-200 text-xs">
+            <thead class="bg-slate-100 text-slate-700 font-heading">
+              <tr>
+                <th class="px-3 py-3 text-left font-semibold">ชื่อยา / เวชภัณฑ์</th>
+                <th class="px-2 py-3 text-center font-semibold">บรรจุ<br><span class="text-[10px] font-normal text-slate-500">(ต่อกล่อง)</span></th>
+                <th class="px-2 py-3 text-right font-semibold bg-amber-50/70">จ่ายทั้งปี 69<br><span class="text-[10px] font-normal text-slate-500">(รวมรหัสซ้ำ)</span></th>
+                <th class="px-2 py-3 text-right font-semibold bg-teal-50/70">ใช้เฉลี่ย/ด.<br><span class="text-[10px] font-normal text-teal-700">(True AMU)</span></th>
+                <th class="px-2 py-3 text-right font-semibold">คลังนอก<br><span class="text-[10px] font-normal text-slate-500">(หน่วยย่อย)</span></th>
+                <th class="px-2 py-3 text-right font-semibold">คลังยาใน<br><span class="text-[10px] font-normal text-slate-500">(กล่อง / ย่อย)</span></th>
+                <th class="px-2 py-3 text-right font-semibold bg-slate-200/60">รวมคงคลัง<br><span class="text-[10px] font-normal text-slate-600">(หน่วยย่อย)</span></th>
+                <th class="px-2 py-3 text-center font-semibold">MOS<br><span class="text-[10px] font-normal text-slate-500">(เดือน)</span></th>
+                <th class="px-2 py-3 text-center font-semibold">สถานะ</th>
+                <th class="px-3 py-3 text-right font-semibold bg-emerald-50 text-emerald-900">แนะนำเบิก<br><span class="text-[10px] font-normal text-emerald-700">(หน่วยย่อย)</span></th>
+                <th class="px-3 py-3 text-right font-semibold bg-emerald-100/80 text-emerald-950">เบิกจริง<br><span class="text-[10px] font-normal text-emerald-800">(จำนวนกล่อง)</span></th>
+              </tr>
+            </thead>
+            <tbody id="inventory-tbody" class="divide-y divide-slate-100 bg-white">
+              <!-- Rows injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 2: JHCIS DATA IMPORT (3 SOURCES) -->
+    <!-- ===================================================================== -->
+    <section id="view-import" class="hidden space-y-6">
+      <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">นำเข้าข้อมูลจากรายงาน JHCIS (รองรับ 3 แหล่งข้อมูล)</h2>
+            <p class="text-xs text-slate-500 mt-1">ระบบรองรับการวางข้อมูลที่คัดลอกมาจากรายงาน รบ 301 (ทั้งแบบรายปี รายเดือน 2 คลัง และยอดคงเหลือ ณ ปัจจุบัน)</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="downloadSampleTemplate()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+              <i data-lucide="file-down" class="w-4 h-4"></i> โหลดไฟล์ตัวอย่าง Excel
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 1: Select Import Mode (3 Modes) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+          <label class="cursor-pointer border-2 rounded-xl p-4 transition flex items-start gap-3 border-amber-500 bg-amber-50/40" id="card-mode-annual">
+            <input type="radio" name="import-mode" value="annual" checked onchange="updateImportModeUI()" class="mt-1 accent-amber-600">
+            <div>
+              <span class="text-xs font-bold bg-amber-600 text-white px-2 py-0.5 rounded">โหมด 1: รายปี (ปีงบประมาณ)</span>
+              <h4 class="font-bold text-sm text-slate-900 mt-1.5">อัปเดตฐานจ่ายทั้งปี (True AMU)</h4>
+              <p class="text-xs text-slate-600 mt-1">นำเข้า รบ 301 สรุปทั้งปีงบประมาณ ระบบจะหาร 12 และรวมยอดรหัสยาซ้ำให้โดยอัตโนมัติ</p>
+            </div>
+          </label>
+
+          <label class="cursor-pointer border-2 rounded-xl p-4 transition flex items-start gap-3 border-slate-200 hover:border-teal-300" id="card-mode-monthly">
+            <input type="radio" name="import-mode" value="monthly" onchange="updateImportModeUI()" class="mt-1 accent-teal-600">
+            <div>
+              <span class="text-xs font-bold bg-teal-600 text-white px-2 py-0.5 rounded">โหมด 2: สิ้นเดือน (2 คลัง)</span>
+              <h4 class="font-bold text-sm text-slate-900 mt-1.5">อัปเดตรายเดือน คลังนอก / คลังใน</h4>
+              <p class="text-xs text-slate-600 mt-1">รองรับรูปแบบ <code class="bg-slate-100 px-1 rounded">240x100</code> ของคลังยาใน พร้อมอัปเดตขนาดบรรจุและยอดคงเหลือ</p>
+            </div>
+          </label>
+
+          <label class="cursor-pointer border-2 rounded-xl p-4 transition flex items-start gap-3 border-slate-200 hover:border-sky-300" id="card-mode-current">
+            <input type="radio" name="import-mode" value="current" onchange="updateImportModeUI()" class="mt-1 accent-sky-600">
+            <div>
+              <span class="text-xs font-bold bg-sky-600 text-white px-2 py-0.5 rounded">โหมด 3: วันนับคลัง / วันเบิก</span>
+              <h4 class="font-bold text-sm text-slate-900 mt-1.5">อัปเดตยอดคงเหลือ ณ ปัจจุบัน</h4>
+              <p class="text-xs text-slate-600 mt-1">ใช้อัปเดตยอดในระบบ JHCIS ก่อนเดินสแกนนับคลัง หรือก่อนกดส่งออกใบเบิกประจำเดือน</p>
+            </div>
+          </label>
+        </div>
+
+        <!-- Sub-option for warehouse selection -->
+        <div id="warehouse-selector-box" class="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-wrap items-center gap-4">
+          <span class="text-xs font-bold text-slate-700">ระบุโซนคลังของไฟล์ที่นำเข้า:</span>
+          <label class="flex items-center gap-1.5 text-xs cursor-pointer">
+            <input type="radio" name="import-zone" value="OUT" checked class="accent-teal-600">
+            <span><strong>คลังยานอก (ห้องจ่ายยา)</strong> — หน่วยย่อย (เม็ด/ขวด/ซอง)</span>
+          </label>
+          <label class="flex items-center gap-1.5 text-xs cursor-pointer">
+            <input type="radio" name="import-zone" value="IN" class="accent-teal-600">
+            <span><strong>คลังยาใน (คลังสำรอง)</strong> — หน่วยกล่อง/ขวด (รองรับรูปแบบ เช่น <code>5x500</code>)</span>
+          </label>
+        </div>
+
+        <!-- Step 2: File Upload or Paste -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-5">
+          <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-center bg-slate-50/70 hover:bg-slate-50 transition">
+            <div class="bg-teal-100 text-teal-700 p-3 rounded-full mb-3">
+              <i data-lucide="upload-cloud" class="w-7 h-7"></i>
+            </div>
+            <h4 class="font-bold text-sm text-slate-800">อัปโหลดไฟล์ Excel (.xlsx, .xls) หรือ CSV</h4>
+            <p class="text-xs text-slate-500 mt-1 max-w-xs">เลือกไฟล์รายงาน รบ 301 หรือรายงานยอดคงคลังที่ Export ออกมาจาก JHCIS</p>
+            <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)" class="hidden">
+            <button onclick="document.getElementById('excel-file-input').click()" class="mt-4 bg-teal-600 hover:bg-teal-700 text-white text-xs font-heading font-medium px-4 py-2.5 rounded-lg transition shadow-sm">
+              เลือกไฟล์จากเครื่องคอมพิวเตอร์
+            </button>
+          </div>
+
+          <div class="flex flex-col">
+            <label class="text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span>หรือวางข้อมูลที่ Copy มาจาก Excel / ตารางรายงาน:</span>
+              <span class="text-[11px] font-normal text-slate-400">รูปแบบ: ชื่อยา [Tab] ยอดจ่าย [Tab] คงเหลือ</span>
+            </label>
+            <textarea id="paste-data-area" rows="5" placeholder="ตัวอย่างการวางข้อมูล:&#10;Losartan Potassium tab 50 mg&#9;5625&#9;2225&#10;Manidipine tab 20 mg&#9;2210&#9;235" class="w-full text-xs font-mono border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-teal-500 outline-none"></textarea>
+            <div class="flex justify-end gap-2 mt-2">
+              <button onclick="document.getElementById('paste-data-area').value=''" class="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5">ล้างข้อความ</button>
+              <button onclick="parsePastedText()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-heading font-medium px-4 py-2 rounded-lg transition">
+                ประมวลผลข้อมูลที่วาง
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Import Preview Table -->
+        <div id="import-preview-box" class="hidden mt-6 pt-5 border-t border-slate-200">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-bold text-sm text-teal-800 flex items-center gap-2">
+              <i data-lucide="check-circle" class="w-4 h-4"></i> ตรวจสอบรายการที่จับคู่สำเร็จ (<span id="import-match-count">0</span> รายการ)
+            </h4>
+            <button onclick="confirmApplyImport()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-heading font-semibold px-4 py-2 rounded-lg shadow-sm">
+              ยืนยันนำเข้าข้อมูลเข้าสู่ระบบ
+            </button>
+          </div>
+          <div class="max-h-64 overflow-y-auto border border-slate-200 rounded-lg">
+            <table class="min-w-full divide-y divide-slate-200 text-xs">
+              <thead class="bg-slate-100">
+                <tr>
+                  <th class="px-3 py-2 text-left">ชื่อยาในไฟล์</th>
+                  <th class="px-3 py-2 text-left">จับคู่กับฐานข้อมูล</th>
+                  <th class="px-3 py-2 text-right">ยอดจ่ายที่อ่านได้</th>
+                  <th class="px-3 py-2 text-right">ยอดคงเหลือใหม่</th>
+                </tr>
+              </thead>
+              <tbody id="import-preview-tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 3: QR CODE SCANNER & BLIND PHYSICAL COUNT (MOBILE CAMERA FIX) -->
+    <!-- ===================================================================== -->
+    <section id="view-scanner" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Camera Scanner & Quick Select -->
+        <div class="lg:col-span-5 bg-white rounded-xl p-5 shadow-sm border border-slate-200 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="camera" class="w-5 h-5 text-teal-600"></i> สแกน QR Code หน้าชั้นยา
+            </h2>
+            <span class="text-xs bg-amber-100 text-amber-800 font-semibold px-2.5 py-0.5 rounded-full">Blind Count Mode</span>
+          </div>
+
+          <!-- Select Warehouse Zone to Count -->
+          <div class="bg-slate-100 p-2 rounded-xl grid grid-cols-2 gap-2">
+            <button type="button" id="btn-count-zone-in" onclick="setCountZone('IN')" class="py-2 px-3 rounded-lg text-xs font-bold bg-teal-600 text-white shadow-sm transition">
+              📦 นับคลังยาใน (กล่อง/ขวด)
+            </button>
+            <button type="button" id="btn-count-zone-out" onclick="setCountZone('OUT')" class="py-2 px-3 rounded-lg text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 transition">
+              💊 นับคลังยานอก (หน่วยย่อย)
+            </button>
+          </div>
+
+          <!-- Camera Viewport (Native Video Stream + jsQR / BarcodeDetector) -->
+          <div class="bg-slate-950 rounded-xl overflow-hidden relative min-h-[260px] flex flex-col items-center justify-center border border-slate-800">
+            <video id="native-camera-video" playsinline autoplay muted class="hidden w-full h-64 object-cover"></video>
+            <canvas id="native-camera-canvas" class="hidden"></canvas>
+            
+            <!-- กรอบเล็ง QR Code -->
+            <div id="camera-reticle" class="hidden absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div class="w-48 h-48 border-2 border-teal-400 rounded-2xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]">
+                <div class="scanner-laser"></div>
+              </div>
+              <span class="absolute bottom-3 bg-black/70 text-white text-[11px] px-3 py-1 rounded-full">นำ QR Code มาวางในกรอบสี่เหลี่ยม</span>
+            </div>
+
+            <div id="camera-placeholder" class="text-center p-6 text-slate-400">
+              <i data-lucide="qr-code" class="w-12 h-12 mx-auto mb-2 text-slate-500"></i>
+              <p class="text-xs font-medium text-slate-300">กดปุ่ม "เปิดกล้องสแกน" หรือ "ถ่ายรูป QR"</p>
+              <p class="text-[11px] text-slate-500 mt-1">แนะนำให้เปิดผ่าน Chrome (Android) หรือ Safari (iPhone)</p>
+            </div>
+          </div>
+
+          <!-- กล่องแจ้งเตือนสถานะกล้อง (แสดง Error ชัดเจนหากมือถือบล็อกกล้อง) -->
+          <div id="camera-error-box" class="hidden bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-3 text-xs space-y-1.5">
+            <p class="font-bold flex items-center gap-1.5"><i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i> <span id="camera-error-title">ไม่สามารถเปิดกล้องสดได้</span></p>
+            <p id="camera-error-desc" class="text-[11px] text-rose-700 leading-relaxed"></p>
+          </div>
+
+          <!-- Camera Controls (ปุ่มเปิดกล้องสด + ตัวเลือกสลับเลนส์ + ปุ่มถ่ายรูปสำรอง) -->
+          <div class="space-y-2">
+            <div class="flex gap-2">
+              <button id="btn-start-camera" onclick="startNativeCamera()" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white text-xs font-heading font-semibold py-2.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 shadow-sm">
+                <i data-lucide="video" class="w-4 h-4"></i> เปิดกล้องสแกนสด
+              </button>
+              <button id="btn-stop-camera" onclick="stopNativeCamera()" class="hidden bg-rose-600 hover:bg-rose-700 text-white text-xs font-heading font-semibold py-2.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5">
+                <i data-lucide="video-off" class="w-4 h-4"></i> ปิดกล้อง
+              </button>
+              <button id="btn-switch-camera" onclick="switchCameraLens()" class="hidden bg-slate-700 hover:bg-slate-600 text-white text-xs font-heading font-medium py-2.5 px-3 rounded-lg transition flex items-center justify-center gap-1" title="สลับเลนส์กล้อง">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i> สลับเลนส์
+              </button>
+            </div>
+
+            <!-- ปุ่มถ่ายรูป QR Code สำรอง (ทำงานได้ 100% บนมือถือทุกรุ่นแม้เบราว์เซอร์บล็อก Live Stream) -->
+            <div class="pt-1">
+              <input type="file" id="qr-photo-input" accept="image/*" capture="environment" onchange="scanQrFromPhotoFile(event)" class="hidden">
+              <button onclick="document.getElementById('qr-photo-input').click()" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs font-heading font-medium py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2 border border-slate-700">
+                <i data-lucide="camera" class="w-4 h-4 text-teal-400"></i> ถ่ายรูป / เลือกภาพ QR Code (ใช้แทนหากกล้องสดไม่ขึ้น)
+              </button>
+            </div>
+          </div>
+
+          <!-- Manual Drug Selector -->
+          <div class="pt-3 border-t border-slate-100">
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">หรือเลือกรายการยาจากรายชื่อเพื่อบันทึกนับคลัง:</label>
+            <select id="manual-scan-select" onchange="selectDrugForCount(this.value)" class="w-full text-xs border border-slate-300 rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+              <option value="">-- เลือกรายการยา / เวชภัณฑ์ --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Right Column: Blind Count Form & Session Log -->
+        <div class="lg:col-span-7 space-y-6">
+          <div id="count-form-card" class="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+            <div id="count-empty-state" class="text-center py-10 text-slate-400">
+              <i data-lucide="clipboard-check" class="w-12 h-12 mx-auto mb-2 text-slate-300"></i>
+              <h3 class="text-sm font-bold text-slate-600">พร้อมสำหรับการตรวจนับสต็อก (Blind Count)</h3>
+              <p class="text-xs mt-1 max-w-md mx-auto">สแกนป้าย QR Code หน้ากล่องยา หรือเลือกรายชื่อยาด้านซ้าย ระบบจะซ่อนยอดคงเหลือในคอมพิวเตอร์ไว้ก่อน เพื่อให้นับตามจริงหน้าชั้นยา</p>
+            </div>
+
+            <div id="count-active-form" class="hidden space-y-4">
+              <div class="flex flex-wrap items-start justify-between gap-2 pb-3 border-b border-slate-100">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span id="scan-drug-code" class="text-xs font-mono bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-bold">CODE</span>
+                    <span id="scan-zone-badge" class="text-xs font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded">โซน: คลังยาใน</span>
+                  </div>
+                  <h3 id="scan-drug-name" class="text-lg font-bold text-slate-900 mt-1">ชื่อยา</h3>
+                </div>
+                <div class="bg-slate-100 px-3 py-1.5 rounded-lg text-right">
+                  <span class="text-[11px] text-slate-500 block">ยอดในระบบ (JHCIS)</span>
+                  <span id="scan-blind-badge" class="text-xs font-bold text-amber-700 flex items-center gap-1">
+                    <i data-lucide="eye-off" class="w-3.5 h-3.5"></i> ซ่อนอยู่ (Blind Count)
+                  </span>
+                </div>
+              </div>
+
+              <!-- Pack + Loose Calculator -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">จำนวนกล่อง/ขวดเต็ม</label>
+                  <input type="number" id="count-boxes" value="0" min="0" oninput="updateCountTotalPreview()" class="w-full text-base font-bold text-center border border-slate-300 rounded-lg py-2 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">ขนาดบรรจุ (ต่อกล่อง)</label>
+                  <input type="number" id="count-pack-size" value="1" min="1" oninput="updateCountTotalPreview()" class="w-full text-base font-bold text-center border border-slate-300 rounded-lg py-2 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">เศษหน่วยย่อย (<span id="count-unit-label">เม็ด</span>)</label>
+                  <input type="number" id="count-loose" value="0" min="0" oninput="updateCountTotalPreview()" class="w-full text-base font-bold text-center border border-slate-300 rounded-lg py-2 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between bg-teal-50 border border-teal-200 px-4 py-3 rounded-xl">
+                <span class="text-xs font-bold text-teal-900">ยอดนับได้จริงรวมทั้งสิ้น:</span>
+                <span class="text-xl font-bold text-teal-700"><span id="count-total-preview">0</span> <span id="count-unit-preview" class="text-sm font-normal">เม็ด</span></span>
+              </div>
+
+              <!-- FEFO Expiry & Lot Input -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">วันหมดอายุล็อตที่ใกล้ที่สุด (FEFO)</label>
+                  <input type="month" id="count-expiry" class="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">เลขที่ผลิต (Lot No.) / หมายเหตุ</label>
+                  <input type="text" id="count-lot" placeholder="ระบุ Lot No. หรือหมายเหตุ (ถ้ามี)" class="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+              </div>
+
+              <div class="flex items-center justify-end gap-3 pt-2">
+                <button type="button" onclick="cancelCount()" class="text-xs text-slate-600 hover:text-slate-900 px-4 py-2.5 rounded-lg border border-slate-300">ยกเลิก</button>
+                <button type="button" onclick="submitBlindCount()" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-heading font-semibold px-6 py-2.5 rounded-lg shadow-sm flex items-center gap-1.5">
+                  <i data-lucide="check-square" class="w-4 h-4"></i> บันทึกผลนับ & เฉลยยอดเทียบระบบ
+                </button>
+              </div>
+            </div>
+
+            <!-- Variance Result Banner (Revealed after submit) -->
+            <div id="variance-reveal-box" class="hidden mt-4 p-4 rounded-xl border"></div>
+          </div>
+
+          <!-- Count History Log -->
+          <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-bold text-slate-800">ประวัติการตรวจนับคลังรอบนี้ (<span id="log-count-badge">0</span> รายการ)</h3>
+              <button onclick="exportCountLogExcel()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
+                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> ส่งออกผลนับสต็อก
+              </button>
+            </div>
+            <div class="overflow-x-auto max-h-64 border border-slate-200 rounded-lg">
+              <table class="min-w-full divide-y divide-slate-200 text-xs">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-3 py-2 text-left">เวลา / โซน</th>
+                    <th class="px-3 py-2 text-left">ชื่อยา</th>
+                    <th class="px-3 py-2 text-right">ในระบบ</th>
+                    <th class="px-3 py-2 text-right">นับได้จริง</th>
+                    <th class="px-3 py-2 text-right">ผลต่าง</th>
+                    <th class="px-3 py-2 text-center">วันหมดอายุ</th>
+                  </tr>
+                </thead>
+                <tbody id="count-log-tbody" class="divide-y divide-slate-100">
+                  <tr><td colspan="6" class="px-3 py-6 text-center text-slate-400">ยังไม่มีรายการตรวจนับในรอบนี้</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 4: PRINT QR CODE SHELF LABELS -->
+    <!-- ===================================================================== -->
+    <section id="view-labels" class="hidden space-y-6">
+      <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 no-print">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">ระบบสร้างและพิมพ์ป้าย QR Code ติดหน้าชั้นยา (Smart Shelf Labels)</h2>
+            <p class="text-xs text-slate-500 mt-0.5">เลือกโซนคลังและหมวดหมู่ที่ต้องการพิมพ์ ระบบจะสร้าง QR Code ที่มีรหัสยาและโซนฝังอยู่ พร้อมจุดสั่งซื้อ (Min Level)</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="label-zone-select" onchange="renderQrLabels()" class="text-xs font-bold border border-teal-300 rounded-lg px-3 py-2 bg-teal-50 text-teal-900">
+              <option value="IN">โซน: คลังยาใน (ป้ายติดกล่องสำรอง)</option>
+              <option value="OUT">โซน: คลังยานอก (ป้ายติดชั้นจ่ายยา)</option>
+            </select>
+            <select id="label-cat-select" onchange="renderQrLabels()" class="text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white">
+              <option value="ALL">ทุกหมวดหมู่ (119 รายการ)</option>
+              <option value="ยาแผนปัจจุบัน">เฉพาะยาแผนปัจจุบัน</option>
+              <option value="ยาสมุนไพร">เฉพาะยาสมุนไพร</option>
+              <option value="เวชภัณฑ์คุมกำเนิด">เฉพาะเวชภัณฑ์คุมกำเนิด</option>
+              <option value="CRITICAL">เฉพาะกลุ่มต้องเบิกด่วน</option>
+            </select>
+            <button onclick="window.print()" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-heading font-semibold px-4 py-2 rounded-lg shadow-sm flex items-center gap-1.5">
+              <i data-lucide="printer" class="w-4 h-4"></i> สั่งพิมพ์ป้าย (A4)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Printable Area -->
+      <div id="print-area" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <!-- QR Label Cards injected by JS -->
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 5: MASTER DATA & FY69 DUPLICATE AUDIT -->
+    <!-- ===================================================================== -->
+    <section id="view-master" class="hidden space-y-6">
+      <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">จัดการฐานข้อมูลยา ขนาดบรรจุ และรายการรวมรหัสซ้ำปีงบ 2569</h2>
+            <p class="text-xs text-slate-500 mt-0.5">สามารถปรับแก้ขนาดบรรจุ (Pack Size) อัตราใช้เฉลี่ย/เดือน หรือเพิ่มรายการยาใหม่ได้ทันที</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="openAddDrugModal()" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-heading font-medium px-3.5 py-2 rounded-lg flex items-center gap-1.5">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มรายการยาใหม่
+            </button>
+            <button onclick="resetToDefaultData()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-medium px-3.5 py-2 rounded-lg">
+              รีเซ็ตกลับเป็นค่าเริ่มต้นปี 69
+            </button>
+          </div>
+        </div>
+
+        <!-- Audit Note Box -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs space-y-1.5">
+          <p class="font-bold text-amber-900">📋 บันทึกการทำความสะอาดฐานข้อมูล (Data Cleansing) จากรายงานปีงบประมาณ 2569:</p>
+          <ul class="list-disc list-inside text-amber-800 space-y-1">
+            <li><strong>รวมยอดจ่ายรหัสซ้ำแล้ว:</strong> Metformin 500 mg (80,770 + 40,935 = 121,705 เม็ด/ปี), Simvastatin 20 mg (48,280 + 9,000 = 57,280 เม็ด/ปี), Colchicine 0.6 mg (890 + 170 = 1,060 เม็ด/ปี), Triamcinolone cream (62 + 40 = 102 หลอด/ปี), ขมิ้นชัน, ครีมไพล, ยาธาตุอบเชย, มะขามป้อม, เพชรสังฆาต</li>
+            <li><strong>ตัดรายการล้างสต็อกย้อนหลัง (Clearance) ออกจากการคำนวณ Rate:</strong> Ascorbic Acid 100 mg, Methimazole 5 mg, Metronidazole 200 mg, Prednisolone 5 mg, Propranolol 10 mg, PTU 50 mg, ยาศุขไสยาศน์, ยาหอมนวโกฐ (ตั้งค่า AMU = 0 เพื่อไม่ให้สั่งเบิกอัตโนมัติ)</li>
+          </ul>
+        </div>
+
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="min-w-full divide-y divide-slate-200 text-xs">
+            <thead class="bg-slate-100">
+              <tr>
+                <th class="px-3 py-2.5 text-left">รหัส</th>
+                <th class="px-3 py-2.5 text-left">ชื่อยา / เวชภัณฑ์</th>
+                <th class="px-3 py-2.5 text-left">หมวดหมู่</th>
+                <th class="px-3 py-2.5 text-center">หน่วยย่อย</th>
+                <th class="px-3 py-2.5 text-center">ขนาดบรรจุ/กล่อง</th>
+                <th class="px-3 py-2.5 text-right">จ่ายปี 69</th>
+                <th class="px-3 py-2.5 text-right">True AMU/ด.</th>
+                <th class="px-3 py-2.5 text-center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="master-tbody" class="divide-y divide-slate-100 bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal: Add / Edit Drug -->
+  <div id="drug-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 id="modal-title" class="font-bold text-base text-slate-900">แก้ไขข้อมูลยา</h3>
+        <button onclick="closeDrugModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <input type="hidden" id="edit-drug-id">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">ชื่อยา / เวชภัณฑ์</label>
+          <input type="text" id="edit-drug-name" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">หมวดหมู่</label>
+            <select id="edit-drug-cat" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white">
+              <option value="ยาแผนปัจจุบัน">ยาแผนปัจจุบัน</option>
+              <option value="ยาสมุนไพร">ยาสมุนไพร</option>
+              <option value="เวชภัณฑ์คุมกำเนิด">เวชภัณฑ์คุมกำเนิด</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">หน่วยนับย่อย</label>
+            <input type="text" id="edit-drug-unit" placeholder="เช่น เม็ด, ขวด, หลอด" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">ขนาดบรรจุ (ต่อกล่อง)</label>
+            <input type="number" id="edit-drug-pack" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">True AMU (ใช้เฉลี่ย/เดือน)</label>
+            <input type="number" id="edit-drug-amu" step="0.01" min="0" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">คงเหลือคลังนอก (ย่อย)</label>
+            <input type="number" id="edit-drug-out" min="0" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">คงเหลือคลังใน (กล่อง)</label>
+            <input type="number" id="edit-drug-in" min="0" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+        <button onclick="closeDrugModal()" class="text-xs px-4 py-2 rounded-lg border border-slate-300 text-slate-600">ยกเลิก</button>
+        <button onclick="saveDrugModal()" class="text-xs px-5 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold">บันทึกข้อมูล</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <!-- ===================================================================== -->
+  <script>
+    // -----------------------------------------------------------------------
+    // 1. MASTER DATASET: ข้อมูลจริง รพ.สต.บ้านหัวชวด (ปีงบ 69 + ต.ค. 69 2 คลัง)
+    // -----------------------------------------------------------------------
+    const DEFAULT_DRUGS = [
+      // ยาสมุนไพร (22 รายการ)
+      { id: "H01", name: "การ์ซิดีน", cat: "ยาสมุนไพร", unit: "ขวด", packSize: 1, fy69Disp: 5, trueAmu: 0.42, octDisp: 1, stockOut: 0, stockInBoxes: 0, price: 31.50 },
+      { id: "H02", name: "ขมิ้นชัน แคปซูล 500 มก. (รวมรหัสซ้ำ)", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 100, fy69Disp: 1130, trueAmu: 94.17, octDisp: 250, stockOut: 0, stockInBoxes: 0, price: 0.43 },
+      { id: "H03", name: "ครีมไพล (PlaiRenix / อภัยภูเบศร รวมรหัสซ้ำ)", cat: "ยาสมุนไพร", unit: "หลอด", packSize: 1, fy69Disp: 145, trueAmu: 12.08, octDisp: 19, stockOut: 12, stockInBoxes: 0, price: 33.00 },
+      { id: "H04", name: "คาลาไมด์พญายอ", cat: "ยาสมุนไพร", unit: "ขวด", packSize: 1, fy69Disp: 4, trueAmu: 0.33, octDisp: 0, stockOut: 3, stockInBoxes: 0, price: 28.00 },
+      { id: "H05", name: "จันทน์ลีลา แคปซูล", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 100, fy69Disp: 152, trueAmu: 12.67, octDisp: 0, stockOut: 48, stockInBoxes: 2, price: 0.90 },
+      { id: "H06", name: "พญายอ (ยาหม่อง)", cat: "ยาสมุนไพร", unit: "ขวด", packSize: 1, fy69Disp: 18, trueAmu: 1.50, octDisp: 2, stockOut: 0, stockInBoxes: 0, price: 21.00 },
+      { id: "H07", name: "ยาขิง แคปซูล", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 100, fy69Disp: 408, trueAmu: 34.00, octDisp: 222, stockOut: 50, stockInBoxes: 0, price: 0.90 },
+      { id: "H08", name: "ยาตรีผลา แคปซูล", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 100, fy69Disp: 500, trueAmu: 41.67, octDisp: 0, stockOut: 100, stockInBoxes: 2, price: 0.85 },
+      { id: "H09", name: "ยาธาตุอบเชย (KMP รวมรหัสซ้ำ)", cat: "ยาสมุนไพร", unit: "ขวด", packSize: 1, fy69Disp: 107, trueAmu: 8.92, octDisp: 5, stockOut: 7, stockInBoxes: 12, price: 16.00 },
+      { id: "H10", name: "ยาน้ำแก้ไอมะขามป้อม 120 ซีซี (รวมรหัสซ้ำ)", cat: "ยาสมุนไพร", unit: "ขวด", packSize: 1, fy69Disp: 209, trueAmu: 17.42, octDisp: 10, stockOut: 3, stockInBoxes: 34, price: 17.00 },
+      { id: "H11", name: "ยาประสะมะแว้ง (ทีเอฟดี)", cat: "ยาสมุนไพร", unit: "ซอง", packSize: 20, fy69Disp: 40, trueAmu: 3.33, octDisp: 8, stockOut: 12, stockInBoxes: 1, price: 3.85 },
+      { id: "H12", name: "ยาประสะไพล แคปซูล", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 100, fy69Disp: 100, trueAmu: 8.33, octDisp: 100, stockOut: 100, stockInBoxes: 1, price: 0.85 },
+      { id: "H13", name: "ยาปราบชมพูทวีป แคปซูล", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 100, fy69Disp: 174, trueAmu: 14.50, octDisp: 0, stockOut: 66, stockInBoxes: 1, price: 0.95 },
+      { id: "H14", name: "ยาพญายอครีม 5 กรัม", cat: "ยาสมุนไพร", unit: "หลอด", packSize: 1, fy69Disp: 11, trueAmu: 0.92, octDisp: 0, stockOut: 2, stockInBoxes: 0, price: 42.80 },
+      { id: "H15", name: "ยามะขามแขก แคปซูล 400/500 มก.", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 100, fy69Disp: 130, trueAmu: 10.83, octDisp: 0, stockOut: 80, stockInBoxes: 3, price: 0.70 },
+      { id: "H16", name: "ยาหญ้าดอกขาว ยาชง", cat: "ยาสมุนไพร", unit: "ห่อ", packSize: 1, fy69Disp: 12, trueAmu: 1.00, octDisp: 3, stockOut: 0, stockInBoxes: 0, price: 30.00 },
+      { id: "H17", name: "ยาหอมเทพจิตร", cat: "ยาสมุนไพร", unit: "ซอง", packSize: 1, fy69Disp: 80, trueAmu: 6.67, octDisp: 4, stockOut: 7, stockInBoxes: 0, price: 12.00 },
+      { id: "H18", name: "ยาเถาวัลย์เปรียง แคปซูล 500 มก.", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 100, fy69Disp: 1400, trueAmu: 116.67, octDisp: 126, stockOut: 44, stockInBoxes: 1, price: 0.80 },
+      { id: "H19", name: "ยาแคปซูลฟ้าทะลายโจร", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 100, fy69Disp: 580, trueAmu: 48.33, octDisp: 50, stockOut: 140, stockInBoxes: 0, price: 0.68 },
+      { id: "H20", name: "สหัสธารา แคปซูล", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 100, fy69Disp: 950, trueAmu: 79.17, octDisp: 0, stockOut: 90, stockInBoxes: 0, price: 0.90 },
+      { id: "H21", name: "เพชรสังฆาต 60เม็ด/กระปุก (รวมรหัสซ้ำ)", cat: "ยาสมุนไพร", unit: "แคปซูล", packSize: 60, fy69Disp: 440, trueAmu: 36.67, octDisp: 0, stockOut: 120, stockInBoxes: 11, price: 0.92 },
+      { id: "H22", name: "ยาหอมนวโกฐ (Clearance ปี 69)", cat: "ยาสมุนไพร", unit: "ขวด", packSize: 100, fy69Disp: 300, trueAmu: 0, octDisp: 0, stockOut: 0, stockInBoxes: 0, price: 0.50 },
+
+      // ยาแผนปัจจุบัน (95 รายการสุทธิ)
+      { id: "D01", name: "Albendazole susp 400mg/20ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 9, trueAmu: 0.75, octDisp: 0, stockOut: 6, stockInBoxes: 0, price: 14.45 },
+      { id: "D02", name: "Albendazole tab 200 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 100, fy69Disp: 164, trueAmu: 13.67, octDisp: 16, stockOut: 114, stockInBoxes: 0, price: 1.65 },
+      { id: "D03", name: "Allopurinol tab 100 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 9305, trueAmu: 775.42, octDisp: 785, stockOut: 1025, stockInBoxes: 0, price: 0.47 },
+      { id: "D04", name: "Alumina and Magnesia 240 ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 61, trueAmu: 5.08, octDisp: 5, stockOut: 9, stockInBoxes: 20, price: 18.00 },
+      { id: "D05", name: "Amlodipine 5 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 100, fy69Disp: 129090, trueAmu: 10757.50, octDisp: 8680, stockOut: 4955, stockInBoxes: 120, price: 0.38 },
+      { id: "D06", name: "Amoxycillin cap 250 mg", cat: "ยาแผนปัจจุบัน", unit: "แคปซูล", packSize: 500, fy69Disp: 880, trueAmu: 73.33, octDisp: 0, stockOut: 380, stockInBoxes: 0, price: 0.97 },
+      { id: "D07", name: "Amoxycillin cap 500 mg", cat: "ยาแผนปัจจุบัน", unit: "แคปซูล", packSize: 500, fy69Disp: 1220, trueAmu: 101.67, octDisp: 80, stockOut: 320, stockInBoxes: 0, price: 1.71 },
+      { id: "D08", name: "Amoxycillin syr 125mg/5ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 7, trueAmu: 0.58, octDisp: 0, stockOut: 8, stockInBoxes: 0, price: 12.80 },
+      { id: "D09", name: "Analgesic Balm cream (GPO)", cat: "ยาแผนปัจจุบัน", unit: "หลอด", packSize: 1, fy69Disp: 292, trueAmu: 24.33, octDisp: 10, stockOut: 11, stockInBoxes: 10, price: 13.91 },
+      { id: "D10", name: "Antazoline+Tetryzoline eye drops", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 109, trueAmu: 9.08, octDisp: 6, stockOut: 14, stockInBoxes: 12, price: 10.70 },
+      { id: "D11", name: "Aromatic Ammonia spirit", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 1, trueAmu: 0.08, octDisp: 0, stockOut: 0, stockInBoxes: 1, price: 127.33 },
+      { id: "D12", name: "Aspirin tab 81 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 8620, trueAmu: 718.33, octDisp: 845, stockOut: 980, stockInBoxes: 0, price: 0.16 },
+      { id: "D13", name: "Atenolol tab 50 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 76985, trueAmu: 6415.42, octDisp: 5505, stockOut: 2240, stockInBoxes: 16, price: 0.17 },
+      { id: "D14", name: "Atorvastatin tab 40 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 30, fy69Disp: 7260, trueAmu: 605.00, octDisp: 770, stockOut: 405, stockInBoxes: 20, price: 1.20 },
+      { id: "D15", name: "Calamine lotion 15%", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 27, trueAmu: 2.25, octDisp: 1, stockOut: 4, stockInBoxes: 0, price: 14.98 },
+      { id: "D16", name: "Calcium Carbonate tab 1500 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 100, fy69Disp: 2405, trueAmu: 200.42, octDisp: 90, stockOut: 795, stockInBoxes: 0, price: 0.41 },
+      { id: "D17", name: "Chlorpheniramine inj 10mg/ml", cat: "ยาแผนปัจจุบัน", unit: "แอมพูล", packSize: 1, fy69Disp: 0, trueAmu: 0, octDisp: 0, stockOut: 10, stockInBoxes: 0, price: 2.24 },
+      { id: "D18", name: "Chlorpheniramin syr 2mg/5ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 110, trueAmu: 9.17, octDisp: 5, stockOut: 3, stockInBoxes: 30, price: 8.56 },
+      { id: "D19", name: "Chlorpheniramine tab 4 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 2530, trueAmu: 210.83, octDisp: 170, stockOut: 980, stockInBoxes: 0, price: 0.06 },
+      { id: "D20", name: "Cinnarizine tab 25 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 390, trueAmu: 32.50, octDisp: 0, stockOut: 150, stockInBoxes: 0, price: 0.19 },
+      { id: "D21", name: "Clopidogrel tab 75 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 100, fy69Disp: 3285, trueAmu: 273.75, octDisp: 520, stockOut: 110, stockInBoxes: 0, price: 3.00 },
+      { id: "D22", name: "Clotrimazole 1% 15 gm", cat: "ยาแผนปัจจุบัน", unit: "หลอด", packSize: 1, fy69Disp: 92, trueAmu: 7.67, octDisp: 6, stockOut: 5, stockInBoxes: 0, price: 15.00 },
+      { id: "D23", name: "Clotrimazole vag tab 100 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 100, fy69Disp: 24, trueAmu: 2.00, octDisp: 0, stockOut: 6, stockInBoxes: 0, price: 1.67 },
+      { id: "D24", name: "Colchicine 0.6 mg (รวมรหัสซ้ำ)", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 100, fy69Disp: 1060, trueAmu: 88.33, octDisp: 0, stockOut: 330, stockInBoxes: 0, price: 0.33 },
+      { id: "D25", name: "D5N IN 1000 ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 0, trueAmu: 0, octDisp: 0, stockOut: 2, stockInBoxes: 0, price: 29.50 },
+      { id: "D26", name: "D5N/2 IN 500 ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 0, trueAmu: 0, octDisp: 0, stockOut: 3, stockInBoxes: 0, price: 25.00 },
+      { id: "D27", name: "D5N/3 IN 500 ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 0, trueAmu: 0, octDisp: 0, stockOut: 2, stockInBoxes: 0, price: 25.00 },
+      { id: "D28", name: "Dextromethorphan tab 15 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 980, trueAmu: 81.67, octDisp: 20, stockOut: 880, stockInBoxes: 0, price: 0.25 },
+      { id: "D29", name: "Diclofenac tab 25 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 2700, trueAmu: 225.00, octDisp: 110, stockOut: 950, stockInBoxes: 0, price: 0.12 },
+      { id: "D30", name: "Dicloxacillin cap 250 mg", cat: "ยาแผนปัจจุบัน", unit: "แคปซูล", packSize: 500, fy69Disp: 1000, trueAmu: 83.33, octDisp: 170, stockOut: 220, stockInBoxes: 0, price: 1.11 },
+      { id: "D31", name: "Dicloxacillin dry syr 62.5mg/5ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 14, trueAmu: 1.17, octDisp: 0, stockOut: 6, stockInBoxes: 0, price: 18.32 },
+      { id: "D32", name: "Dicyclomine HCl tab 10 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 1210, trueAmu: 100.83, octDisp: 110, stockOut: 810, stockInBoxes: 0, price: 0.40 },
+      { id: "D33", name: "Digoxin tab 0.25 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 595, trueAmu: 49.58, octDisp: 60, stockOut: 890, stockInBoxes: 0, price: 0.32 },
+      { id: "D34", name: "Dimenhydrinate inj 50mg/ml", cat: "ยาแผนปัจจุบัน", unit: "แอมพูล", packSize: 1, fy69Disp: 0, trueAmu: 0, octDisp: 0, stockOut: 9, stockInBoxes: 0, price: 4.00 },
+      { id: "D35", name: "Dimenhydrinate tab 50 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 3470, trueAmu: 289.17, octDisp: 280, stockOut: 610, stockInBoxes: 0, price: 0.17 },
+      { id: "D36", name: "Domperidone susp", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 21, trueAmu: 1.75, octDisp: 1, stockOut: 10, stockInBoxes: 0, price: 6.00 },
+      { id: "D37", name: "Domperidone tab 10 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 900, trueAmu: 75.00, octDisp: 100, stockOut: 40, stockInBoxes: 1, price: 0.21 },
+      { id: "D38", name: "Doxazosin tab 2 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 100, fy69Disp: 33560, trueAmu: 2796.67, octDisp: 2685, stockOut: 4780, stockInBoxes: 0, price: 0.29 },
+      { id: "D39", name: "Enalapril tab 20 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 65390, trueAmu: 5449.17, octDisp: 3920, stockOut: 3860, stockInBoxes: 3, price: 0.36 },
+      { id: "D40", name: "Enalapril tab 5 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 39650, trueAmu: 3304.17, octDisp: 2890, stockOut: 2920, stockInBoxes: 0, price: 0.16 },
+      { id: "D41", name: "Ethyl Alcohol 70% 450 ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 22, trueAmu: 1.83, octDisp: 2, stockOut: 0, stockInBoxes: 3, price: 27.82 },
+      { id: "D42", name: "Ferrous Fumarate susp 76mg/5ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 127, trueAmu: 10.58, octDisp: 15, stockOut: 17, stockInBoxes: 15, price: 23.00 },
+      { id: "D43", name: "Ferrous Fumarate tab 200 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 22860, trueAmu: 1905.00, octDisp: 660, stockOut: 625, stockInBoxes: 2, price: 0.13 },
+      { id: "D44", name: "Fluoxetin tab 20 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 0, trueAmu: 0, octDisp: 0, stockOut: 600, stockInBoxes: 0, price: 0.50 },
+      { id: "D45", name: "Folic Acid tab 5 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 18120, trueAmu: 1510.00, octDisp: 1340, stockOut: 570, stockInBoxes: 2, price: 0.20 },
+      { id: "D46", name: "Furosemide tab 40 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 1425, trueAmu: 118.75, octDisp: 195, stockOut: 343, stockInBoxes: 0, price: 0.31 },
+      { id: "D47", name: "Gabapentin cap 100 mg", cat: "ยาแผนปัจจุบัน", unit: "แคปซูล", packSize: 100, fy69Disp: 19870, trueAmu: 1655.83, octDisp: 1300, stockOut: 1155, stockInBoxes: 10, price: 1.50 },
+      { id: "D48", name: "Gemfibrozil tab 600 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 1785, trueAmu: 148.75, octDisp: 360, stockOut: 1565, stockInBoxes: 0, price: 1.00 },
+      { id: "D49", name: "Glipizide tab 5 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 42930, trueAmu: 3577.50, octDisp: 3390, stockOut: 2865, stockInBoxes: 12, price: 0.12 },
+      { id: "D50", name: "Glyceryl guaiacolate tab 100 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 2240, trueAmu: 186.67, octDisp: 160, stockOut: 610, stockInBoxes: 0, price: 0.15 },
+      { id: "D51", name: "Griseofulvin tab 500 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 1115, trueAmu: 92.92, octDisp: 0, stockOut: 450, stockInBoxes: 0, price: 2.20 },
+      { id: "D52", name: "Guaifenesin syr 100mg/5ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 102, trueAmu: 8.50, octDisp: 8, stockOut: 5, stockInBoxes: 35, price: 13.91 },
+      { id: "D53", name: "HCTZ 25 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 6690, trueAmu: 557.50, octDisp: 150, stockOut: 1520, stockInBoxes: 0, price: 0.30 },
+      { id: "D54", name: "Hydralazine tab 25 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 78885, trueAmu: 6573.75, octDisp: 5630, stockOut: 2240, stockInBoxes: 26, price: 0.44 },
+      { id: "D55", name: "Hydroxyzine HCl tab 10 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 1290, trueAmu: 107.50, octDisp: 110, stockOut: 530, stockInBoxes: 0, price: 0.14 },
+      { id: "D56", name: "Ibuprofen tab 200 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 2130, trueAmu: 177.50, octDisp: 110, stockOut: 450, stockInBoxes: 0, price: 0.36 },
+      { id: "D57", name: "Insulin mixed 30/70 (BER)", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 30, trueAmu: 2.50, octDisp: 4, stockOut: 16, stockInBoxes: 0, price: 80.00 },
+      { id: "D58", name: "Insulin mixt 70/30 (BIO)", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 84, trueAmu: 7.00, octDisp: 0, stockOut: 2, stockInBoxes: 0, price: 80.00 },
+      { id: "D59", name: "Insulin NPH สีเขียว", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 26, trueAmu: 2.17, octDisp: 1, stockOut: 16, stockInBoxes: 0, price: 78.00 },
+      { id: "D60", name: "Isosorbide Dinitrate tab 10 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 2200, trueAmu: 183.33, octDisp: 0, stockOut: 650, stockInBoxes: 0, price: 0.54 },
+      { id: "D61", name: "Isosorbide Dinitrate tab 5 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 160, trueAmu: 13.33, octDisp: 0, stockOut: 480, stockInBoxes: 0, price: 0.81 },
+      { id: "D62", name: "Lactated Ringer 1000 ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 0, trueAmu: 0, octDisp: 0, stockOut: 2, stockInBoxes: 0, price: 38.00 },
+      { id: "D63", name: "Lidocaine inj 2% (LBS)", cat: "ยาแผนปัจจุบัน", unit: "ไวอัล", packSize: 1, fy69Disp: 2, trueAmu: 0.17, octDisp: 2, stockOut: 0, stockInBoxes: 0, price: 20.00 },
+      { id: "D64", name: "Loratadine tab 10 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 1320, trueAmu: 110.00, octDisp: 80, stockOut: 500, stockInBoxes: 0, price: 0.38 },
+      { id: "D65", name: "Losartan Potassium tab 50 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 30, fy69Disp: 73890, trueAmu: 6157.50, octDisp: 5625, stockOut: 2225, stockInBoxes: 37, price: 0.71 },
+      { id: "D66", name: "Manidipine tab 20 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 24924, trueAmu: 2077.00, octDisp: 2210, stockOut: 235, stockInBoxes: 5, price: 1.20 },
+      { id: "D67", name: "Metformin HCl 500 mg (รวม 2 รหัสซ้ำ)", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 121705, trueAmu: 10142.08, octDisp: 7120, stockOut: 4945, stockInBoxes: 14, price: 0.20 },
+      { id: "D68", name: "Milk of Magnesia 240 ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 95, trueAmu: 7.92, octDisp: 8, stockOut: 6, stockInBoxes: 20, price: 29.96 },
+      { id: "D69", name: "Multivitamin syr", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 27, trueAmu: 2.25, octDisp: 0, stockOut: 5, stockInBoxes: 0, price: 12.50 },
+      { id: "D70", name: "Multivitamin tab", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 895, trueAmu: 74.58, octDisp: 0, stockOut: 0, stockInBoxes: 1, price: 0.27 },
+      { id: "D71", name: "Neotica Balm cream", cat: "ยาแผนปัจจุบัน", unit: "หลอด", packSize: 1, fy69Disp: 0, trueAmu: 0, octDisp: 0, stockOut: 0, stockInBoxes: 50, price: 12.00 },
+      { id: "D72", name: "Norfloxacin tab 200 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 404, trueAmu: 33.67, octDisp: 20, stockOut: 460, stockInBoxes: 0, price: 0.60 },
+      { id: "D73", name: "Nortriptyline HCl tab 10 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 300, trueAmu: 25.00, octDisp: 30, stockOut: 970, stockInBoxes: 0, price: 0.56 },
+      { id: "D74", name: "NSS inj IN 1000 ml", cat: "ยาแผนปัจจุบัน", unit: "กระปุก", packSize: 1, fy69Disp: 0, trueAmu: 0, octDisp: 0, stockOut: 2, stockInBoxes: 0, price: 29.00 },
+      { id: "D75", name: "NSS inj 100 ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 0, trueAmu: 0, octDisp: 0, stockOut: 2, stockInBoxes: 0, price: 11.00 },
+      { id: "D76", name: "NSS Irrigation 1000 ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 77, trueAmu: 6.42, octDisp: 4, stockOut: 0, stockInBoxes: 26, price: 29.00 },
+      { id: "D77", name: "Omeprazole cap 20 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 2770, trueAmu: 230.83, octDisp: 230, stockOut: 570, stockInBoxes: 0, price: 0.55 },
+      { id: "D78", name: "ORS 5.5 G", cat: "ยาแผนปัจจุบัน", unit: "ซอง", packSize: 100, fy69Disp: 850, trueAmu: 70.83, octDisp: 85, stockOut: 45, stockInBoxes: 3, price: 1.60 },
+      { id: "D79", name: "Oxytetracycline Eye Oint", cat: "ยาแผนปัจจุบัน", unit: "หลอด", packSize: 1, fy69Disp: 6, trueAmu: 0.50, octDisp: 0, stockOut: 4, stockInBoxes: 0, price: 15.16 },
+      { id: "D80", name: "Paracetamol syr 120mg/5ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 129, trueAmu: 10.75, octDisp: 8, stockOut: 11, stockInBoxes: 50, price: 8.00 },
+      { id: "D81", name: "Paracetamol tab 500 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 10170, trueAmu: 847.50, octDisp: 800, stockOut: 1020, stockInBoxes: 1, price: 0.22 },
+      { id: "D82", name: "Pioglitazone tab 15 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 13960, trueAmu: 1163.33, octDisp: 895, stockOut: 475, stockInBoxes: 9, price: 0.64 },
+      { id: "D83", name: "Povidone Iodine scrub 7.5%", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 2, trueAmu: 0.17, octDisp: 3, stockOut: 0, stockInBoxes: 0, price: 96.30 },
+      { id: "D84", name: "Povidone Iodine soln 10% 450ml", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 11, trueAmu: 0.92, octDisp: 2, stockOut: 0, stockInBoxes: 5, price: 107.00 },
+      { id: "D85", name: "Roxithromycin tab 150 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 50, trueAmu: 4.17, octDisp: 0, stockOut: 60, stockInBoxes: 0, price: 1.15 },
+      { id: "D86", name: "Silver sulfadiazine 1% cream", cat: "ยาแผนปัจจุบัน", unit: "หลอด", packSize: 1, fy69Disp: 27, trueAmu: 2.25, octDisp: 11, stockOut: 7, stockInBoxes: 0, price: 28.00 },
+      { id: "D87", name: "Simethicone tab 80 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 700, trueAmu: 58.33, octDisp: 50, stockOut: 260, stockInBoxes: 0, price: 0.39 },
+      { id: "D88", name: "Simvastatin tab 20 mg (รวม 2 รหัสซ้ำ)", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 100, fy69Disp: 57280, trueAmu: 4773.33, octDisp: 4670, stockOut: 1300, stockInBoxes: 30, price: 0.48 },
+      { id: "D89", name: "Spironolactone tab 25 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 1970, trueAmu: 164.17, octDisp: 260, stockOut: 215, stockInBoxes: 0, price: 0.82 },
+      { id: "D90", name: "Tolperisone HCl tab 50 mg", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 500, fy69Disp: 1460, trueAmu: 121.67, octDisp: 50, stockOut: 750, stockInBoxes: 0, price: 0.33 },
+      { id: "D91", name: "Tramadol cap 50 mg", cat: "ยาแผนปัจจุบัน", unit: "แคปซูล", packSize: 500, fy69Disp: 580, trueAmu: 48.33, octDisp: 20, stockOut: 440, stockInBoxes: 0, price: 0.34 },
+      { id: "D92", name: "Triamcinolone cream (รวมขนาด 5g+15g)", cat: "ยาแผนปัจจุบัน", unit: "หลอด", packSize: 1, fy69Disp: 102, trueAmu: 8.50, octDisp: 4, stockOut: 6, stockInBoxes: 20, price: 16.00 },
+      { id: "D93", name: "Triamcinolone lotion 0.1%", cat: "ยาแผนปัจจุบัน", unit: "ขวด", packSize: 1, fy69Disp: 37, trueAmu: 3.08, octDisp: 8, stockOut: 4, stockInBoxes: 0, price: 12.84 },
+      { id: "D94", name: "Triamcinolone oral 0.1%", cat: "ยาแผนปัจจุบัน", unit: "ซอง", packSize: 100, fy69Disp: 47, trueAmu: 3.92, octDisp: 1, stockOut: 29, stockInBoxes: 0, price: 3.00 },
+      { id: "D95", name: "Vitamin BCO tab", cat: "ยาแผนปัจจุบัน", unit: "เม็ด", packSize: 1000, fy69Disp: 26135, trueAmu: 2177.92, octDisp: 1570, stockOut: 620, stockInBoxes: 3, price: 0.28 },
+
+      // เวชภัณฑ์คุมกำเนิด (2 รายการ)
+      { id: "C01", name: "ENAF-150 (ยาฉีดคุมกำเนิด)", cat: "เวชภัณฑ์คุมกำเนิด", unit: "ขวด", packSize: 1, fy69Disp: 44, trueAmu: 3.67, octDisp: 4, stockOut: 6, stockInBoxes: 10, price: 10.70 },
+      { id: "C02", name: "R-DEN (ยาเม็ดคุมกำเนิด)", cat: "เวชภัณฑ์คุมกำเนิด", unit: "แผง", packSize: 1, fy69Disp: 45, trueAmu: 3.75, octDisp: 3, stockOut: 15, stockInBoxes: 50, price: 10.00 }
+    ];
+
+    // -----------------------------------------------------------------------
+    // 2. STATE MANAGEMENT & LOCAL STORAGE
+    // -----------------------------------------------------------------------
+    let drugsData = [];
+    let countLogs = [];
+    let activeCountZone = 'IN';
+    let currentScanningDrug = null;
+    let pendingImportItems = [];
+    let inventoryChartInstance = null;
+
+    // Mobile Camera Variables
+    let activeStream = null;
+    let videoDevices = [];
+    let currentDeviceIndex = 0;
+    let scanAnimationFrame = null;
+    let barcodeDetector = null;
+
+    function initApp() {
+      detectInAppBrowser();
+
+      const savedDrugs = localStorage.getItem('huachuad_rx_v3_drugs');
+      const savedLogs = localStorage.getItem('huachuad_rx_v3_logs');
+      
+      if (savedDrugs) {
+        drugsData = JSON.parse(savedDrugs);
+      } else {
+        drugsData = JSON.parse(JSON.stringify(DEFAULT_DRUGS));
+      }
+
+      if (savedLogs) {
+        countLogs = JSON.parse(savedLogs);
+      }
+
+      // Check URL query param for direct QR Code scan (e.g. ?scan=D65&zone=IN)
+      const urlParams = new URLSearchParams(window.location.search);
+      const scanCode = urlParams.get('scan');
+      const scanZone = urlParams.get('zone');
+
+      recalculateAll();
+      populateManualDropdown();
+      renderMasterTable();
+      renderCountLogs();
+      lucide.createIcons();
+
+      if (scanCode) {
+        switchTab('scanner');
+        if (scanZone === 'OUT' || scanZone === 'IN') setCountZone(scanZone);
+        selectDrugForCount(scanCode);
+      }
+    }
+
+    // ตรวจจับการเปิดผ่าน Line / Facebook In-App Browser
+    function detectInAppBrowser() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera;
+      const isInApp = /Line|FBAN|FBAV|Instagram|MicroMessenger/i.test(ua);
+      if (isInApp) {
+        document.getElementById('in-app-browser-banner').classList.remove('hidden');
+      }
+    }
+
+    function copyCurrentUrl() {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        alert('คัดลอกลิงก์เรียบร้อยแล้ว! กรุณาเปิดแอป Chrome หรือ Safari แล้ววางลิงก์เพื่อใช้งานกล้องสแกน QR Code ครับ');
+      });
+    }
+
+    function saveAllToLocal() {
+      localStorage.setItem('huachuad_rx_v3_drugs', JSON.stringify(drugsData));
+      localStorage.setItem('huachuad_rx_v3_logs', JSON.stringify(countLogs));
+      alert('บันทึกข้อมูลทั้งหมดลงในเครื่องเรียบร้อยแล้วครับ');
+    }
+
+    function resetToDefaultData() {
+      if (confirm('ยืนยันรีเซ็ตข้อมูลกลับเป็นค่าเริ่มต้นของปีงบประมาณ 2569 และ ต.ค. 2569 ใช่หรือไม่?')) {
+        drugsData = JSON.parse(JSON.stringify(DEFAULT_DRUGS));
+        saveAllToLocal();
+        recalculateAll();
+        renderMasterTable();
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // 3. TAB NAVIGATION
+    // -----------------------------------------------------------------------
+    function switchTab(tabName) {
+      ['dashboard', 'import', 'scanner', 'labels', 'master'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add('hidden');
+        const btn = document.getElementById(`tab-btn-${t}`);
+        btn.classList.remove('tab-active');
+        btn.classList.add('text-teal-100');
+      });
+
+      document.getElementById(`view-${tabName}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+      activeBtn.classList.add('tab-active');
+      activeBtn.classList.remove('text-teal-100');
+
+      if (tabName === 'labels') renderQrLabels();
+      if (tabName !== 'scanner') stopNativeCamera();
+      lucide.createIcons();
+    }
+
+    // -----------------------------------------------------------------------
+    // 4. CORE CALCULATION ENGINE (FY69 TRUE AMU + DUAL WAREHOUSE)
+    // -----------------------------------------------------------------------
+    function getEffectiveAmu(drug, mode) {
+      if (mode === 'fy69') return drug.trueAmu;
+      if (mode === 'oct69') return drug.octDisp;
+      return (drug.trueAmu * 0.7) + (drug.octDisp * 0.3);
+    }
+
+    function recalculateAll() {
+      const amuMode = document.getElementById('param-amu-mode').value;
+      const minMonths = parseFloat(document.getElementById('param-min-months').value) || 1.0;
+      const maxMonths = parseFloat(document.getElementById('param-max-months').value) || 2.0;
+
+      const modeLabels = {
+        'fy69': '100% ฐานทั้งปีงบ 2569',
+        'weighted': 'ถ่วงน้ำหนัก 70% ปี 69 + 30% ล่าสุด',
+        'oct69': '100% ยอดจ่ายเดือนล่าสุด'
+      };
+      document.getElementById('header-amu-mode').innerText = modeLabels[amuMode];
+
+      let cntCritical = 0, cntOptimal = 0, cntOverstock = 0, cntDeadstock = 0;
+      let totalValOut = 0, totalValIn = 0, totalMonthlyDispVal = 0;
+
+      drugsData.forEach(d => {
+        const effAmu = getEffectiveAmu(d, amuMode);
+        d.effAmu = effAmu;
+        d.stockInUnits = d.stockInBoxes * d.packSize;
+        d.totalStock = d.stockOut + d.stockInUnits;
+
+        totalValOut += d.stockOut * d.price;
+        totalValIn += d.stockInUnits * d.price;
+        totalMonthlyDispVal += effAmu * d.price;
+
+        if (effAmu <= 0) {
+          d.mos = d.totalStock > 0 ? 999 : 0;
+          d.status = 'deadstock';
+          d.orderUnits = 0;
+          d.orderBoxes = 0;
+          cntDeadstock++;
+        } else {
+          d.mos = d.totalStock / effAmu;
+          const minLevel = effAmu * minMonths;
+          const maxLevel = effAmu * maxMonths;
+
+          if (d.totalStock <= minLevel || d.mos < 0.75) {
+            d.orderUnits = Math.max(0, Math.ceil(maxLevel - d.totalStock));
+            d.orderBoxes = d.orderUnits > 0 ? Math.ceil(d.orderUnits / d.packSize) : 0;
+          } else {
+            d.orderUnits = 0;
+            d.orderBoxes = 0;
+          }
+
+          if (d.mos < 0.75) {
+            d.status = 'critical';
+            cntCritical++;
+          } else if (d.mos <= 3.0) {
+            d.status = 'optimal';
+            cntOptimal++;
+          } else {
+            d.status = 'overstock';
+            cntOverstock++;
+          }
+        }
+      });
+
+      document.getElementById('kpi-critical').innerText = `${cntCritical} รายการ`;
+      document.getElementById('kpi-optimal').innerText = `${cntOptimal} รายการ`;
+      document.getElementById('kpi-overstock').innerText = `${cntOverstock} รายการ`;
+      document.getElementById('kpi-deadstock').innerText = `${cntDeadstock} รายการ`;
+
+      const grandTotalVal = totalValOut + totalValIn;
+      document.getElementById('kpi-total-value').innerText = `฿${grandTotalVal.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`;
+      document.getElementById('val-out-display').innerText = `฿${totalValOut.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`;
+      document.getElementById('val-in-display').innerText = `฿${totalValIn.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`;
+      
+      const avgMos = totalMonthlyDispVal > 0 ? (grandTotalVal / totalMonthlyDispVal) : 0;
+      document.getElementById('mos-avg-display').innerText = avgMos.toFixed(2);
+
+      updateChart(totalValOut, totalValIn, grandTotalVal, totalMonthlyDispVal);
+      renderTable();
+    }
+
+    function updateChart(valOut, valIn, valTotal, valDisp) {
+      const ctx = document.getElementById('inventoryChart').getContext('2d');
+      if (inventoryChartInstance) inventoryChartInstance.destroy();
+
+      inventoryChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['คลังนอก', 'คลังยาใน', 'รวมคงคลัง', 'จ่ายเฉลี่ย/ด.'],
+          datasets: [{
+            label: 'มูลค่า (บาท)',
+            data: [valOut, valIn, valTotal, valDisp],
+            backgroundColor: ['#0284c7', '#0d9488', '#1e293b', '#6366f1'],
+            borderRadius: 6,
+            barThickness: 28
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { font: { size: 10 } } },
+            x: { ticks: { font: { size: 10, family: 'Prompt' } } }
+          }
+        }
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. TABLE RENDERING & FILTERING
+    // -----------------------------------------------------------------------
+    function filterByStatus(status) {
+      document.getElementById('filter-status').value = status;
+      renderTable();
+    }
+
+    function resetFilters() {
+      document.getElementById('filter-search').value = '';
+      document.getElementById('filter-category').value = 'ALL';
+      document.getElementById('filter-status').value = 'ALL';
+      renderTable();
+    }
+
+    function renderTable() {
+      const search = document.getElementById('filter-search').value.toLowerCase();
+      const cat = document.getElementById('filter-category').value;
+      const statusFilter = document.getElementById('filter-status').value;
+
+      const filtered = drugsData.filter(d => {
+        const matchSearch = d.name.toLowerCase().includes(search) || d.id.toLowerCase().includes(search);
+        const matchCat = cat === 'ALL' || d.cat === cat;
+        let matchStatus = true;
+        if (statusFilter === 'ORDER_NEEDED') matchStatus = d.orderBoxes > 0;
+        else if (statusFilter !== 'ALL') matchStatus = d.status === statusFilter;
+        return matchSearch && matchCat && matchStatus;
+      });
+
+      const tbody = document.getElementById('inventory-tbody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-8 text-center text-slate-400">ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(d => {
+        let statusBadge = '';
+        let rowBg = 'hover:bg-slate-50';
+
+        if (d.status === 'critical') {
+          statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">เสี่ยงขาด</span>`;
+          rowBg = 'bg-rose-50/40 hover:bg-rose-50/80';
+        } else if (d.status === 'optimal') {
+          statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">เหมาะสม</span>`;
+        } else if (d.status === 'overstock') {
+          statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">ล้นคลัง</span>`;
+        } else {
+          statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600">ไม่เคลื่อนไหว</span>`;
+        }
+
+        const mosText = d.mos === 999 ? '∞' : d.mos.toFixed(2);
+        const packLabel = d.packSize > 1 ? `1:${d.packSize}` : '1:1';
+        const inDisplay = d.packSize > 1 
+          ? `<span class="font-bold text-slate-800">${d.stockInBoxes}</span> <span class="text-[10px] text-slate-400">(${d.stockInUnits.toLocaleString()})</span>`
+          : `<span class="font-bold text-slate-800">${d.stockInBoxes}</span>`;
+
+        const orderBoxBadge = d.orderBoxes > 0 
+          ? `<span class="bg-emerald-600 text-white font-bold px-2 py-0.5 rounded text-xs">${d.orderBoxes.toLocaleString()} ${d.packSize > 1 ? 'กล่อง' : d.unit}</span>`
+          : `<span class="text-slate-300">-</span>`;
+
+        return `
+          <tr class="${rowBg} transition">
+            <td class="px-3 py-2.5">
+              <div class="font-semibold text-slate-900">${d.name}</div>
+              <div class="text-[10px] text-slate-400">${d.id} • ${d.cat} (${d.unit})</div>
+            </td>
+            <td class="px-2 py-2.5 text-center font-mono text-[11px] text-slate-600">${packLabel}</td>
+            <td class="px-2 py-2.5 text-right bg-amber-50/40 text-slate-700">${d.fy69Disp.toLocaleString()}</td>
+            <td class="px-2 py-2.5 text-right bg-teal-50/40 font-bold text-teal-800">${d.effAmu.toLocaleString('th-TH', { maximumFractionDigits: 1 })}</td>
+            <td class="px-2 py-2.5 text-right text-slate-700">${d.stockOut.toLocaleString()}</td>
+            <td class="px-2 py-2.5 text-right">${inDisplay}</td>
+            <td class="px-2 py-2.5 text-right bg-slate-100/70 font-bold text-slate-900">${d.totalStock.toLocaleString()}</td>
+            <td class="px-2 py-2.5 text-center font-bold ${d.mos < 0.75 ? 'text-rose-600' : 'text-slate-700'}">${mosText}</td>
+            <td class="px-2 py-2.5 text-center">${statusBadge}</td>
+            <td class="px-3 py-2.5 text-right bg-emerald-50/50 text-emerald-800 font-medium">${d.orderUnits > 0 ? d.orderUnits.toLocaleString() : '-'}</td>
+            <td class="px-3 py-2.5 text-right bg-emerald-100/40">${orderBoxBadge}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function exportRequisitionExcel() {
+      const orderList = drugsData.filter(d => d.orderBoxes > 0);
+      if (orderList.length === 0) {
+        alert('ไม่มีรายการที่ต้องเบิกเพิ่มตามเงื่อนไข Min-Max ที่ตั้งไว้ครับ');
+        return;
+      }
+
+      const rows = orderList.map((d, idx) => ({
+        'ลำดับ': idx + 1,
+        'รหัสยา': d.id,
+        'ชื่อยา-เวชภัณฑ์': d.name,
+        'หมวดหมู่': d.cat,
+        'ใช้เฉลี่ยต่อเดือน (AMU)': Number(d.effAmu.toFixed(2)),
+        'คงเหลือคลังนอก (ย่อย)': d.stockOut,
+        'คงเหลือคลังยาใน (กล่อง)': d.stockInBoxes,
+        'รวมคงคลังสุทธิ (ย่อย)': d.totalStock,
+        'คงเหลือใช้ได้ (เดือน)': Number(d.mos.toFixed(2)),
+        'ขนาดบรรจุต่อกล่อง': d.packSize,
+        'จำนวนเบิก (หน่วยย่อย)': d.orderUnits,
+        'จำนวนเบิกจริง (กล่อง/ขวด)': d.orderBoxes,
+        'หน่วยเบิก': d.packSize > 1 ? 'กล่อง' : d.unit
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'ใบเบิกยา_รพสต_บ้านหัวชวด');
+      XLSX.writeFile(wb, `ใบเบิกยา_รพสต_บ้านหัวชวด_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. JHCIS DATA IMPORT ENGINE
+    // -----------------------------------------------------------------------
+    function updateImportModeUI() {
+      const mode = document.querySelector('input[name="import-mode"]:checked').value;
+      ['annual', 'monthly', 'current'].forEach(m => {
+        const card = document.getElementById(`card-mode-${m}`);
+        card.classList.remove('border-amber-500', 'bg-amber-50/40', 'border-teal-500', 'bg-teal-50/40', 'border-sky-500', 'bg-sky-50/40');
+        card.classList.add('border-slate-200');
+      });
+
+      const activeCard = document.getElementById(`card-mode-${mode}`);
+      activeCard.classList.remove('border-slate-200');
+      if (mode === 'annual') activeCard.classList.add('border-amber-500', 'bg-amber-50/40');
+      if (mode === 'monthly') activeCard.classList.add('border-teal-500', 'bg-teal-50/40');
+      if (mode === 'current') activeCard.classList.add('border-sky-500', 'bg-sky-50/40');
+
+      document.getElementById('warehouse-selector-box').style.display = (mode === 'annual') ? 'none' : 'flex';
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        processRawRows(jsonRows);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parsePastedText() {
+      const text = document.getElementById('paste-data-area').value.trim();
+      if (!text) return;
+      const rows = text.split('\n').map(line => line.split(/\t|,|\|/));
+      processRawRows(rows);
+    }
+
+    function parsePackFormat(val) {
+      if (val === undefined || val === null) return { qty: 0, pack: null };
+      const str = String(val).trim().replace(/,/g, '');
+      if (str.includes('x') || str.includes('X')) {
+        const parts = str.split(/x|X/);
+        return { qty: parseFloat(parts[0]) || 0, pack: parseInt(parts[1]) || 1 };
+      }
+      return { qty: parseFloat(str) || 0, pack: null };
+    }
+
+    function processRawRows(rows) {
+      pendingImportItems = [];
+      rows.forEach(cols => {
+        if (!cols || cols.length < 2) return;
+        const rawName = String(cols[0] || '').replace(/^\d+\.\s*/, '').trim();
+        if (!rawName || rawName.includes('ชื่อยา') || rawName.includes('รวม')) return;
+
+        const keyword = rawName.split(' ')[0].toLowerCase();
+        if (keyword.length < 3) return;
+
+        const matched = drugsData.find(d => d.name.toLowerCase().includes(keyword));
+        if (matched) {
+          const dispParsed = parsePackFormat(cols[1]);
+          const remParsed = cols.length >= 3 ? parsePackFormat(cols[2]) : dispParsed;
+
+          pendingImportItems.push({
+            rawName,
+            drugId: matched.id,
+            drugName: matched.name,
+            dispQty: dispParsed.qty,
+            remQty: remParsed.qty,
+            detectedPack: dispParsed.pack || remParsed.pack
+          });
+        }
+      });
+
+      const previewBox = document.getElementById('import-preview-box');
+      const tbody = document.getElementById('import-preview-tbody');
+      document.getElementById('import-match-count').innerText = pendingImportItems.length;
+
+      if (pendingImportItems.length === 0) {
+        alert('ไม่พบรายการที่ตรงกับฐานข้อมูล กรุณาตรวจสอบรูปแบบคอลัมน์ (ชื่อยา | ยอดจ่าย | ยอดคงเหลือ)');
+        return;
+      }
+
+      tbody.innerHTML = pendingImportItems.map(item => `
+        <tr>
+          <td class="px-3 py-2 text-slate-600">${item.rawName}</td>
+          <td class="px-3 py-2 font-bold text-teal-800">${item.drugName}</td>
+          <td class="px-3 py-2 text-right">${item.dispQty.toLocaleString()}</td>
+          <td class="px-3 py-2 text-right font-bold">${item.remQty.toLocaleString()} ${item.detectedPack ? `(บรรจุ ${item.detectedPack})` : ''}</td>
+        </tr>
+      `).join('');
+
+      previewBox.classList.remove('hidden');
+    }
+
+    function confirmApplyImport() {
+      const mode = document.querySelector('input[name="import-mode"]:checked').value;
+      const zone = document.querySelector('input[name="import-zone"]:checked').value;
+
+      pendingImportItems.forEach(item => {
+        const drug = drugsData.find(d => d.id === item.drugId);
+        if (!drug) return;
+
+        if (item.detectedPack && item.detectedPack > 1) {
+          drug.packSize = item.detectedPack;
+        }
+
+        if (mode === 'annual') {
+          drug.fy69Disp = item.dispQty;
+          drug.trueAmu = Number((item.dispQty / 12).toFixed(2));
+        } else if (mode === 'monthly') {
+          if (zone === 'OUT') {
+            drug.octDisp = item.dispQty;
+            drug.stockOut = item.remQty;
+          } else {
+            drug.stockInBoxes = item.remQty;
+          }
+        } else if (mode === 'current') {
+          if (zone === 'OUT') drug.stockOut = item.remQty;
+          else drug.stockInBoxes = item.remQty;
+        }
+      });
+
+      saveAllToLocal();
+      recalculateAll();
+      renderMasterTable();
+      document.getElementById('import-preview-box').classList.add('hidden');
+      alert(`อัปเดตข้อมูลสำเร็จจำนวน ${pendingImportItems.length} รายการเรียบร้อยแล้ว!`);
+      switchTab('dashboard');
+    }
+
+    function downloadSampleTemplate() {
+      const sample = [
+        { 'ชื่อยา-เวชภัณฑ์': 'Losartan Potassium tab 50 mg', 'จ่าย': 5625, 'คงเหลือ': 2225 },
+        { 'ชื่อยา-เวชภัณฑ์': 'Amlodipine 5 mg', 'จ่าย': 8680, 'คงเหลือ': 4955 }
+      ];
+      const ws = XLSX.utils.json_to_sheet(sample);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Template_JHCIS');
+      XLSX.writeFile(wb, 'ตัวอย่างรูปแบบนำเข้า_JHCIS.xlsx');
+    }
+
+    // -----------------------------------------------------------------------
+    // 7. MOBILE CAMERA QR SCANNER ENGINE (V3.1 ROBUST STREAM + PHOTO FALLBACK)
+    // -----------------------------------------------------------------------
+    function populateManualDropdown() {
+      const select = document.getElementById('manual-scan-select');
+      select.innerHTML = `<option value="">-- เลือกรายการยา / เวชภัณฑ์ (${drugsData.length} รายการ) --</option>` +
+        drugsData.map(d => `<option value="${d.id}">[${d.id}] ${d.name}</option>`).join('');
+    }
+
+    function setCountZone(zone) {
+      activeCountZone = zone;
+      const btnIn = document.getElementById('btn-count-zone-in');
+      const btnOut = document.getElementById('btn-count-zone-out');
+
+      if (zone === 'IN') {
+        btnIn.className = 'py-2 px-3 rounded-lg text-xs font-bold bg-teal-600 text-white shadow-sm transition';
+        btnOut.className = 'py-2 px-3 rounded-lg text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 transition';
+      } else {
+        btnOut.className = 'py-2 px-3 rounded-lg text-xs font-bold bg-teal-600 text-white shadow-sm transition';
+        btnIn.className = 'py-2 px-3 rounded-lg text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 transition';
+      }
+
+      if (currentScanningDrug) selectDrugForCount(currentScanningDrug.id);
+    }
+
+    function showCameraError(title, desc) {
+      const box = document.getElementById('camera-error-box');
+      document.getElementById('camera-error-title').innerText = title;
+      document.getElementById('camera-error-desc').innerText = desc;
+      box.classList.remove('hidden');
+    }
+
+    function hideCameraError() {
+      document.getElementById('camera-error-box').classList.add('hidden');
+    }
+
+    async function startNativeCamera(specificDeviceId = null) {
+      hideCameraError();
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showCameraError(
+          'เบราว์เซอร์นี้ไม่รองรับการเปิดกล้องสด',
+          'กรุณาเปิดลิงก์นี้ผ่านแอป Google Chrome (Android) หรือ Safari (iPhone) หรือใช้ปุ่ม "ถ่ายรูป / เลือกภาพ QR Code" ด้านล่างแทนครับ'
+        );
+        return;
+      }
+
+      try {
+        stopNativeCamera();
+
+        const constraints = specificDeviceId
+          ? { video: { deviceId: { exact: specificDeviceId } }, audio: false }
+          : { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
+
+        activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        // เก็บรายชื่อเลนส์กล้องทั้งหมดไว้สำหรับปุ่มสลับเลนส์
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        videoDevices = allDevices.filter(d => d.kind === 'videoinput');
+
+        const videoEl = document.getElementById('native-camera-video');
+        videoEl.srcObject = activeStream;
+        await videoEl.play();
+
+        videoEl.classList.remove('hidden');
+        document.getElementById('camera-reticle').classList.remove('hidden');
+        document.getElementById('camera-placeholder').classList.add('hidden');
+        document.getElementById('btn-start-camera').classList.add('hidden');
+        document.getElementById('btn-stop-camera').classList.remove('hidden');
+
+        if (videoDevices.length > 1) {
+          document.getElementById('btn-switch-camera').classList.remove('hidden');
+        }
+
+        // ใช้ BarcodeDetector ของเบราว์เซอร์ถ้ามี (เร็วมาก) และใช้ jsQR เป็นตัวช่วย
+        if ('BarcodeDetector' in window) {
+          barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+        }
+
+        scanAnimationFrame = requestAnimationFrame(scanVideoFrameLoop);
+      } catch (err) {
+        console.error('Camera Error:', err);
+        let msg = 'กรุณากดอนุญาต (Allow) การเข้าถึงกล้องบนเบราว์เซอร์ หรือใช้ปุ่ม "ถ่ายรูป / เลือกภาพ QR Code" ด้านล่างแทน';
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          msg = 'คุณได้ปฏิเสธสิทธิ์การใช้กล้องไว้ กรุณากดที่ไอคอนรูปกุญแจ/ตั้งค่าข้างช่อง URL ด้านบน แล้วเปิดสิทธิ์ "กล้อง (Camera)" จากนั้นรีเฟรชหน้าเว็บครับ';
+        } else if (err.name === 'NotFoundError') {
+          msg = 'ไม่พบอุปกรณ์กล้องบนเครื่องนี้ กรุณาใช้ปุ่ม "ถ่ายรูป / เลือกภาพ QR Code" ด้านล่างครับ';
+        }
+        showCameraError('เปิดกล้องสดไม่สำเร็จ (' + err.name + ')', msg);
+      }
+    }
+
+    async function switchCameraLens() {
+      if (videoDevices.length <= 1) return;
+      currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
+      const nextDevice = videoDevices[currentDeviceIndex];
+      await startNativeCamera(nextDevice.deviceId);
+    }
+
+    function stopNativeCamera() {
+      if (scanAnimationFrame) {
+        cancelAnimationFrame(scanAnimationFrame);
+        scanAnimationFrame = null;
+      }
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+        activeStream = null;
+      }
+      const videoEl = document.getElementById('native-camera-video');
+      videoEl.srcObject = null;
+      videoEl.classList.add('hidden');
+      document.getElementById('camera-reticle').classList.add('hidden');
+      document.getElementById('camera-placeholder').classList.remove('hidden');
+      document.getElementById('btn-start-camera').classList.remove('hidden');
+      document.getElementById('btn-stop-camera').classList.add('hidden');
+      document.getElementById('btn-switch-camera').classList.add('hidden');
+    }
+
+    async function scanVideoFrameLoop() {
+      const videoEl = document.getElementById('native-camera-video');
+      if (!activeStream || videoEl.readyState !== videoEl.HAVE_ENOUGH_DATA) {
+        scanAnimationFrame = requestAnimationFrame(scanVideoFrameLoop);
+        return;
+      }
+
+      try {
+        // วิธีที่ 1: Native BarcodeDetector API (Android Chrome / Edge)
+        if (barcodeDetector) {
+          const barcodes = await barcodeDetector.detect(videoEl);
+          if (barcodes.length > 0 && barcodes[0].rawValue) {
+            handleDecodedQrText(barcodes[0].rawValue);
+            return;
+          }
+        }
+
+        // วิธีที่ 2: jsQR Canvas Decode (รองรับ iPhone Safari และมือถือทุกรุ่น)
+        const canvas = document.getElementById('native-camera-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        canvas.width = videoEl.videoWidth;
+        canvas.height = videoEl.videoHeight;
+        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+        if (code && code.data) {
+          handleDecodedQrText(code.data);
+          return;
+        }
+      } catch (e) {
+        // ข้ามเฟรมที่อ่านไม่สำเร็จ
+      }
+
+      scanAnimationFrame = requestAnimationFrame(scanVideoFrameLoop);
+    }
+
+    // สแกน QR Code จากการถ่ายรูปด้วยกล้องมือถือโดยตรง (Photo Capture Fallback)
+    function scanQrFromPhotoFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      hideCameraError();
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.getElementById('native-camera-canvas');
+          const ctx = canvas.getContext('2d');
+          // ย่อขนาดภาพให้พอเหมาะเพื่อให้อ่าน QR Code ได้ไวและแม่นยำ
+          const maxDim = 1000;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            else { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(img, 0, 0, w, h);
+
+          const imageData = ctx.getImageData(0, 0, w, h);
+          const code = jsQR(imageData.data, w, h, { inversionAttempts: 'attemptBoth' });
+
+          if (code && code.data) {
+            handleDecodedQrText(code.data);
+          } else {
+            showCameraError('ไม่พบ QR Code ในภาพที่ถ่าย', 'กรุณาถ่ายรูปให้เห็นป้าย QR Code ชัดเจนและไม่เบลอ แล้วลองใหม่อีกครั้งครับ');
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    }
+
+    function handleDecodedQrText(decodedText) {
+      stopNativeCamera();
+      let drugId = decodedText.trim();
+      let zone = activeCountZone;
+
+      // รองรับรูปแบบ URL เช่น https://.../index.html?scan=D65&zone=IN
+      if (decodedText.includes('scan=')) {
+        try {
+          const url = new URL(decodedText);
+          drugId = url.searchParams.get('scan') || drugId;
+          const z = url.searchParams.get('zone');
+          if (z === 'IN' || z === 'OUT') zone = z;
+        } catch (e) {}
+      } else if (decodedText.includes('|')) {
+        // รองรับรูปแบบเก่า HUACHUAD|D65|IN
+        const parts = decodedText.split('|');
+        drugId = parts[1];
+        if (parts[2]) zone = parts[2];
+      }
+
+      if (zone === 'IN' || zone === 'OUT') setCountZone(zone);
+      selectDrugForCount(drugId);
+    }
+
+    function selectDrugForCount(drugId) {
+      if (!drugId) return;
+      const drug = drugsData.find(d => d.id === drugId);
+      if (!drug) {
+        alert(`ไม่พบรหัสยา "${drugId}" ในฐานข้อมูล`);
+        return;
+      }
+
+      currentScanningDrug = drug;
+      document.getElementById('manual-scan-select').value = drugId;
+
+      document.getElementById('count-empty-state').classList.add('hidden');
+      document.getElementById('count-active-form').classList.remove('hidden');
+      document.getElementById('variance-reveal-box').classList.add('hidden');
+
+      document.getElementById('scan-drug-code').innerText = drug.id;
+      document.getElementById('scan-drug-name').innerText = drug.name;
+      document.getElementById('scan-zone-badge').innerText = activeCountZone === 'IN' ? 'โซน: คลังยาใน (สำรอง)' : 'โซน: คลังยานอก (ห้องจ่ายยา)';
+      document.getElementById('count-unit-label').innerText = drug.unit;
+      document.getElementById('count-unit-preview').innerText = drug.unit;
+
+      document.getElementById('count-boxes').value = 0;
+      document.getElementById('count-pack-size').value = activeCountZone === 'IN' ? drug.packSize : 1;
+      document.getElementById('count-loose').value = 0;
+      document.getElementById('count-expiry').value = '';
+      document.getElementById('count-lot').value = '';
+
+      updateCountTotalPreview();
+    }
+
+    function updateCountTotalPreview() {
+      const boxes = parseInt(document.getElementById('count-boxes').value) || 0;
+      const pack = parseInt(document.getElementById('count-pack-size').value) || 1;
+      const loose = parseInt(document.getElementById('count-loose').value) || 0;
+      const total = (boxes * pack) + loose;
+      document.getElementById('count-total-preview').innerText = total.toLocaleString();
+    }
+
+    function cancelCount() {
+      currentScanningDrug = null;
+      document.getElementById('count-active-form').classList.add('hidden');
+      document.getElementById('count-empty-state').classList.remove('hidden');
+    }
+
+    function submitBlindCount() {
+      if (!currentScanningDrug) return;
+      const boxes = parseInt(document.getElementById('count-boxes').value) || 0;
+      const pack = parseInt(document.getElementById('count-pack-size').value) || 1;
+      const loose = parseInt(document.getElementById('count-loose').value) || 0;
+      const actualUnits = (boxes * pack) + loose;
+      const expiry = document.getElementById('count-expiry').value || '-';
+      const lot = document.getElementById('count-lot').value || '-';
+
+      const sysUnits = activeCountZone === 'IN' 
+        ? (currentScanningDrug.stockInBoxes * currentScanningDrug.packSize) 
+        : currentScanningDrug.stockOut;
+
+      const variance = actualUnits - sysUnits;
+
+      if (activeCountZone === 'IN') {
+        currentScanningDrug.packSize = pack;
+        currentScanningDrug.stockInBoxes = Math.round(actualUnits / pack);
+      } else {
+        currentScanningDrug.stockOut = actualUnits;
+      }
+
+      const logEntry = {
+        time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+        zone: activeCountZone === 'IN' ? 'คลังยาใน' : 'คลังยานอก',
+        drugId: currentScanningDrug.id,
+        drugName: currentScanningDrug.name,
+        sysUnits,
+        actualUnits,
+        variance,
+        unit: currentScanningDrug.unit,
+        expiry,
+        lot
+      };
+      countLogs.unshift(logEntry);
+
+      const revealBox = document.getElementById('variance-reveal-box');
+      revealBox.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'bg-rose-50', 'border-rose-200');
+      
+      let expiryWarn = '';
+      if (expiry !== '-') {
+        const expDate = new Date(expiry + '-01');
+        const diffMonths = (expDate - new Date()) / (1000 * 60 * 60 * 24 * 30);
+        if (diffMonths <= 6) {
+          expiryWarn = `<div class="mt-2 bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">⚠️ แจ้งเตือน FEFO: ยาล็อตนี้หมดอายุภายใน 6 เดือน (${expiry}) ควรรีบจ่ายออกหรือกระจายต่อ!</div>`;
+        }
+      }
+
+      if (variance === 0) {
+        revealBox.classList.add('bg-emerald-50', 'border-emerald-200');
+        revealBox.innerHTML = `
+          <div class="flex items-center justify-between text-emerald-900">
+            <span class="font-bold text-sm">✅ ยอดตรงกับระบบ 100% (Variance = 0)</span>
+            <span class="text-xs">ในระบบ: ${sysUnits.toLocaleString()} | นับจริง: ${actualUnits.toLocaleString()} ${currentScanningDrug.unit}</span>
+          </div>${expiryWarn}
+        `;
+      } else {
+        revealBox.classList.add('bg-rose-50', 'border-rose-200');
+        const sign = variance > 0 ? '+' : '';
+        revealBox.innerHTML = `
+          <div class="flex flex-wrap items-center justify-between gap-2 text-rose-900">
+            <span class="font-bold text-sm">⚠️ พบผลต่างสต็อก: ${sign}${variance.toLocaleString()} ${currentScanningDrug.unit}</span>
+            <span class="text-xs">ยอดในคอมฯ: <strong>${sysUnits.toLocaleString()}</strong> | นับได้จริง: <strong>${actualUnits.toLocaleString()}</strong></span>
+          </div>
+          <p class="text-[11px] text-rose-700 mt-1">ระบบได้อัปเดตยอดคงเหลือจริงเข้าสู่ฐานข้อมูลเรียบร้อยแล้ว (หากนับพลาดสามารถกรอกตัวเลขใหม่แล้วกดบันทึกซ้ำได้ทันที)</p>${expiryWarn}
+        `;
+      }
+
+      saveAllToLocal();
+      recalculateAll();
+      renderCountLogs();
+    }
+
+    function renderCountLogs() {
+      document.getElementById('log-count-badge').innerText = countLogs.length;
+      const tbody = document.getElementById('count-log-tbody');
+      if (countLogs.length === 0) return;
+
+      tbody.innerHTML = countLogs.map(l => {
+        const varClass = l.variance === 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
+        const varText = l.variance > 0 ? `+${l.variance}` : l.variance;
+        return `
+          <tr>
+            <td class="px-3 py-2 text-slate-500">${l.time} <span class="text-[10px] bg-slate-100 px-1 rounded">${l.zone}</span></td>
+            <td class="px-3 py-2 font-medium text-slate-800">${l.drugName}</td>
+            <td class="px-3 py-2 text-right text-slate-500">${l.sysUnits.toLocaleString()}</td>
+            <td class="px-3 py-2 text-right font-bold text-slate-900">${l.actualUnits.toLocaleString()}</td>
+            <td class="px-3 py-2 text-right ${varClass}">${varText}</td>
+            <td class="px-3 py-2 text-center text-slate-600">${l.expiry}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function exportCountLogExcel() {
+      if (countLogs.length === 0) {
+        alert('ยังไม่มีประวัติการนับสต็อกให้ส่งออกครับ');
+        return;
+      }
+      const ws = XLSX.utils.json_to_sheet(countLogs);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'ผลตรวจนับสต็อก');
+      XLSX.writeFile(wb, `ผลตรวจนับคลังยา_รพสต_บ้านหัวชวด_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. QR CODE SHELF LABEL GENERATOR
+    // -----------------------------------------------------------------------
+    function renderQrLabels() {
+      const zone = document.getElementById('label-zone-select').value;
+      const cat = document.getElementById('label-cat-select').value;
+      const container = document.getElementById('print-area');
+
+      const list = drugsData.filter(d => {
+        if (cat === 'ALL') return true;
+        if (cat === 'CRITICAL') return d.status === 'critical';
+        return d.cat === cat;
+      });
+
+      // สร้าง URL แบบเต็ม เพื่อให้ใช้ได้ทั้งสแกนในแอปและสแกนด้วยกล้องมือถือทั่วไป
+      const baseUrl = window.location.href.split('?')[0];
+
+      container.innerHTML = list.map(d => {
+        const minLevelUnits = Math.ceil(d.effAmu * (parseFloat(document.getElementById('param-min-months').value) || 1));
+        const minDisplay = zone === 'IN' && d.packSize > 1
+          ? `${Math.ceil(minLevelUnits / d.packSize)} กล่อง (${minLevelUnits.toLocaleString()} ${d.unit})`
+          : `${minLevelUnits.toLocaleString()} ${d.unit}`;
+
+        return `
+          <div class="qr-label-card bg-white rounded-xl p-3 border border-slate-300 shadow-sm flex flex-col justify-between">
+            <div class="flex items-start justify-between gap-2 border-b border-slate-200 pb-2">
+              <div>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${zone === 'IN' ? 'bg-teal-100 text-teal-800' : 'bg-indigo-100 text-indigo-800'}">
+                  ${zone === 'IN' ? 'คลังยาใน' : 'คลังยานอก'} • ${d.id}
+                </span>
+                <h4 class="font-bold text-xs text-slate-900 mt-1 line-clamp-2 leading-snug">${d.name}</h4>
+              </div>
+              <div id="qr-canvas-${zone}-${d.id}" class="shrink-0 bg-white p-1 border border-slate-200 rounded"></div>
+            </div>
+            <div class="pt-2 flex items-center justify-between text-[10px] text-slate-600">
+              <span>บรรจุ: <strong>1:${d.packSize}</strong></span>
+              <span class="text-rose-700 font-bold">จุดสั่งซื้อ: ${minDisplay}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // วาดภาพ QR Code ที่ฝังลิงก์ตรงไปยังรายการยานั้นๆ
+      setTimeout(() => {
+        list.forEach(d => {
+          const el = document.getElementById(`qr-canvas-${zone}-${d.id}`);
+          if (el) {
+            el.innerHTML = '';
+            const qrPayload = `${baseUrl}?scan=${d.id}&zone=${zone}`;
+            new QRCode(el, {
+              text: qrPayload,
+              width: 68,
+              height: 68,
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          }
+        });
+      }, 50);
+    }
+
+    // -----------------------------------------------------------------------
+    // 9. MASTER DATA MANAGEMENT
+    // -----------------------------------------------------------------------
+    function renderMasterTable() {
+      const tbody = document.getElementById('master-tbody');
+      tbody.innerHTML = drugsData.map(d => `
+        <tr class="hover:bg-slate-50">
+          <td class="px-3 py-2 font-mono text-slate-500">${d.id}</td>
+          <td class="px-3 py-2 font-semibold text-slate-800">${d.name}</td>
+          <td class="px-3 py-2 text-slate-600">${d.cat}</td>
+          <td class="px-3 py-2 text-center">${d.unit}</td>
+          <td class="px-3 py-2 text-center font-bold text-teal-700">${d.packSize}</td>
+          <td class="px-3 py-2 text-right">${d.fy69Disp.toLocaleString()}</td>
+          <td class="px-3 py-2 text-right font-bold">${d.trueAmu.toFixed(2)}</td>
+          <td class="px-3 py-2 text-center">
+            <button onclick="openEditDrugModal('${d.id}')" class="text-xs text-teal-600 hover:text-teal-800 font-semibold underline">แก้ไข</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openAddDrugModal() {
+      document.getElementById('modal-title').innerText = 'เพิ่มรายการยา / เวชภัณฑ์ใหม่';
+      document.getElementById('edit-drug-id').value = '';
+      document.getElementById('edit-drug-name').value = '';
+      document.getElementById('edit-drug-cat').value = 'ยาแผนปัจจุบัน';
+      document.getElementById('edit-drug-unit').value = 'เม็ด';
+      document.getElementById('edit-drug-pack').value = 100;
+      document.getElementById('edit-drug-amu').value = 0;
+      document.getElementById('edit-drug-out').value = 0;
+      document.getElementById('edit-drug-in').value = 0;
+      document.getElementById('drug-modal').classList.remove('hidden');
+    }
+
+    function openEditDrugModal(id) {
+      const d = drugsData.find(x => x.id === id);
+      if (!d) return;
+      document.getElementById('modal-title').innerText = `แก้ไขข้อมูล: ${d.id}`;
+      document.getElementById('edit-drug-id').value = d.id;
+      document.getElementById('edit-drug-name').value = d.name;
+      document.getElementById('edit-drug-cat').value = d.cat;
+      document.getElementById('edit-drug-unit').value = d.unit;
+      document.getElementById('edit-drug-pack').value = d.packSize;
+      document.getElementById('edit-drug-amu').value = d.trueAmu;
+      document.getElementById('edit-drug-out').value = d.stockOut;
+      document.getElementById('edit-drug-in').value = d.stockInBoxes;
+      document.getElementById('drug-modal').classList.remove('hidden');
+    }
+
+    function closeDrugModal() {
+      document.getElementById('drug-modal').classList.add('hidden');
+    }
+
+    function saveDrugModal() {
+      const id = document.getElementById('edit-drug-id').value;
+      const name = document.getElementById('edit-drug-name').value.trim();
+      if (!name) { alert('กรุณากรอกชื่อยาครับ'); return; }
+
+      const cat = document.getElementById('edit-drug-cat').value;
+      const unit = document.getElementById('edit-drug-unit').value.trim() || 'เม็ด';
+      const packSize = parseInt(document.getElementById('edit-drug-pack').value) || 1;
+      const trueAmu = parseFloat(document.getElementById('edit-drug-amu').value) || 0;
+      const stockOut = parseFloat(document.getElementById('edit-drug-out').value) || 0;
+      const stockInBoxes = parseFloat(document.getElementById('edit-drug-in').value) || 0;
+
+      if (id) {
+        const d = drugsData.find(x => x.id === id);
+        if (d) {
+          Object.assign(d, { name, cat, unit, packSize, trueAmu, stockOut, stockInBoxes });
+        }
+      } else {
+        const newId = 'N' + String(drugsData.length + 1).padStart(2, '0');
+        drugsData.push({
+          id: newId, name, cat, unit, packSize,
+          fy69Disp: Math.round(trueAmu * 12), trueAmu, octDisp: 0,
+          stockOut, stockInBoxes, price: 1.00
+        });
+      }
+
+      closeDrugModal();
+      saveAllToLocal();
+      recalculateAll();
+      renderMasterTable();
+      populateManualDropdown();
+    }
+
+    // Boot Application
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
